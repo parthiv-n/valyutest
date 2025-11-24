@@ -11,14 +11,14 @@ export class PolarEventTracker {
     // Only initialize Polar in production
     if (!this.isDevelopment) {
       if (!process.env.POLAR_ACCESS_TOKEN) {
-        throw new Error('Polar access token required for production event tracking');
+        // Don't throw - just skip initialization
+        console.warn('Polar access token missing - event tracking disabled');
+        return;
       }
       
       this.polar = new Polar({
         accessToken: process.env.POLAR_ACCESS_TOKEN,
       });
-      
-    } else {
     }
   }
 

@@ -17,6 +17,8 @@ export function MissingKeysDialog() {
     daytonaKeyPresent: boolean;
     openaiKeyPresent: boolean;
     aiGatewayKeyPresent: boolean;
+    aiGatewayRequired?: boolean;
+    isDevelopment?: boolean;
   } | null>(null);
 
   useEffect(() => {
@@ -31,10 +33,12 @@ export function MissingKeysDialog() {
         if (!cancelled) {
           setStatus(envData);
 
+          // AI Gateway is required (or recommended in dev mode)
+          const missingGateway = !envData.aiGatewayKeyPresent;
           const missing =
             !envData.valyuKeyPresent ||
             !envData.daytonaKeyPresent ||
-            (!envData.openaiKeyPresent && !envData.aiGatewayKeyPresent);
+            missingGateway;
 
           // Only show dialog if API keys are missing
           if (missing) setOpen(true);
@@ -52,10 +56,10 @@ export function MissingKeysDialog() {
 
   const missingValyu = !status.valyuKeyPresent;
   const missingDaytona = !status.daytonaKeyPresent;
-  const missingOpenAI = !status.openaiKeyPresent && !status.aiGatewayKeyPresent;
+  const missingGateway = !status.aiGatewayKeyPresent;
 
   // Don't show if no API key issues
-  if (!missingValyu && !missingDaytona && !missingOpenAI) return null;
+  if (!missingValyu && !missingDaytona && !missingGateway) return null;
 
   return (
     <Dialog open={open} onOpenChange={setOpen}>
@@ -84,14 +88,23 @@ export function MissingKeysDialog() {
               </div>
             </div>
           )}
-          {missingOpenAI && (
+          {missingGateway && (
             <div className="rounded-md border p-3">
               <div className="font-medium">
-                Missing OPENAI_API_KEY or AI_GATEWAY_API_KEY
+                Missing AI_GATEWAY_API_KEY {status.aiGatewayRequired ? '(Required)' : '(Recommended)'}
               </div>
               <div className="text-muted-foreground">
-                Add OPENAI_API_KEY or AI_GATEWAY_API_KEY to enable ChatGPT
-                access.
+                Add AI_GATEWAY_API_KEY to enable Vercel AI Gateway integration.
+                Get your key at{" "}
+                <a
+                  href="https://vercel.com/dashboard"
+                  target="_blank"
+                  rel="noreferrer"
+                  className="text-blue-600 hover:underline"
+                >
+                  vercel.com/dashboard
+                </a>
+                {" "}→ AI Gateway → API Keys
               </div>
             </div>
           )}

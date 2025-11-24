@@ -5,6 +5,8 @@ import { buildPdfHtmlTemplate } from '@/lib/pdf-utils';
 import { cleanBiomedicalText, preprocessMarkdownText } from '@/lib/markdown-utils';
 import { Citation } from '@/lib/citation-utils';
 import { csvToMarkdownTable, formatCsvForMarkdown, CSVData } from '@/lib/csv-utils';
+import * as db from '@/lib/db';
+import { isDevelopmentMode } from '@/lib/local-db/local-auth';
 import * as fs from 'fs';
 import * as path from 'path';
 
@@ -43,14 +45,16 @@ export async function POST(request: NextRequest) {
 
     console.log('[PDF Generation] Starting PDF generation for session:', sessionId);
 
-    const supabase = await createClient();
+    // Step 1: Get user and fetch session
+    const { data: { user } } = await db.getUser();
+    if (!user) {
+      return NextResponse.json(
+        { error: 'User not authenticated' },
+        { status: 401 }
+      );
+    }
 
-    // Step 1: Fetch session and messages
-    const { data: sessionData, error: sessionError } = await supabase
-      .from('chat_sessions')
-      .select('title')
-      .eq('id', sessionId)
-      .single();
+    const { data: sessionData, error: sessionError } = await db.getChatSession(sessionId, user.id);
 
     if (sessionError || !sessionData) {
       console.error('[PDF Generation] Session not found:', sessionError);
@@ -60,11 +64,7 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    const { data: messages, error: messagesError } = await supabase
-      .from('chat_messages')
-      .select('*')
-      .eq('session_id', sessionId)
-      .order('created_at', { ascending: true });
+    const { data: messages, error: messagesError } = await db.getChatMessages(sessionId);
 
     if (messagesError) {
       console.error('[PDF Generation] Error fetching messages:', messagesError);
@@ -91,12 +91,23 @@ export async function POST(request: NextRequest) {
     let totalProcessingTimeMs = 0;
 
     for (const message of assistantMessages) {
-      const content = message.content;
+      // Handle content field - in local DB it's a JSON string, in Supabase it might be an array
+      let content = message.content;
+      if (typeof content === 'string') {
+        try {
+          content = JSON.parse(content);
+        } catch (e) {
+          console.warn('[PDF Generation] Failed to parse message content:', e);
+          continue;
+        }
+      }
       if (!content || !Array.isArray(content)) continue;
 
       // Accumulate processing time from assistant messages
-      if (message.processing_time_ms) {
-        totalProcessingTimeMs += message.processing_time_ms;
+      // Handle both field name formats: processing_time_ms (Supabase) and processingTimeMs (local DB)
+      const processingTime = message.processing_time_ms || message.processingTimeMs;
+      if (processingTime) {
+        totalProcessingTimeMs += processingTime;
       }
 
       for (const part of content) {
@@ -180,38 +191,46 @@ export async function POST(request: NextRequest) {
 
     // Fetch CSV data and convert to markdown tables
     const csvMarkdownMap = new Map<string, string>();
-    for (const csvId of csvIds) {
-      const { data: csvData, error } = await supabase
-        .from('csvs')
-        .select('*')
-        .eq('id', csvId)
-        .single();
+    
+    // CSV fetching only works in production mode (Supabase)
+    // In development mode, CSVs might not be stored in DB
+    if (!isDevelopmentMode() && csvIds.length > 0) {
+      const supabase = await createClient();
+      for (const csvId of csvIds) {
+        const { data: csvData, error } = await supabase
+          .from('csvs')
+          .select('*')
+          .eq('id', csvId)
+          .single();
 
-      if (!error && csvData) {
-        // Parse rows if they're stored as JSON string
-        let parsedRows = csvData.rows;
-        if (typeof csvData.rows === 'string') {
-          try {
-            parsedRows = JSON.parse(csvData.rows);
-          } catch (e) {
-            console.error('[PDF Generation] Failed to parse CSV rows:', e);
-            continue;
+        if (!error && csvData) {
+          // Parse rows if they're stored as JSON string
+          let parsedRows = csvData.rows;
+          if (typeof csvData.rows === 'string') {
+            try {
+              parsedRows = JSON.parse(csvData.rows);
+            } catch (e) {
+              console.error('[PDF Generation] Failed to parse CSV rows:', e);
+              continue;
+            }
           }
+
+          // Create CSV data object
+          const csvDataObj: CSVData = {
+            title: csvData.title || 'Table',
+            description: csvData.description,
+            headers: csvData.headers || [],
+            rows: parsedRows || [],
+          };
+
+          // Format and convert to markdown table (same as chat interface)
+          const formattedCsvData = formatCsvForMarkdown(csvDataObj);
+          const markdownTable = csvToMarkdownTable(formattedCsvData);
+          csvMarkdownMap.set(csvId, markdownTable);
         }
-
-        // Create CSV data object
-        const csvDataObj: CSVData = {
-          title: csvData.title || 'Table',
-          description: csvData.description,
-          headers: csvData.headers || [],
-          rows: parsedRows || [],
-        };
-
-        // Format and convert to markdown table (same as chat interface)
-        const formattedCsvData = formatCsvForMarkdown(csvDataObj);
-        const markdownTable = csvToMarkdownTable(formattedCsvData);
-        csvMarkdownMap.set(csvId, markdownTable);
       }
+    } else if (isDevelopmentMode() && csvIds.length > 0) {
+      console.warn('[PDF Generation] CSV rendering not supported in development mode');
     }
 
     console.log('[PDF Generation] Converted', csvMarkdownMap.size, 'CSV tables to markdown');
@@ -219,32 +238,56 @@ export async function POST(request: NextRequest) {
     // Step 5: Launch Puppeteer with appropriate configuration
     let browser: Browser;
 
-    if (isProduction && chromium) {
-      // Production: Use @sparticuz/chromium for serverless environments
-      console.log('[PDF Generation] Using @sparticuz/chromium for production');
-      browser = await puppeteer.launch({
-        args: chromium.args,
-        defaultViewport: chromium.defaultViewport,
-        executablePath: await chromium.executablePath(),
-        headless: chromium.headless,
-      });
-    } else {
-      // Development: Use local Chrome/Chromium
-      console.log('[PDF Generation] Using local Puppeteer');
-      browser = await puppeteer.launch({
-        headless: true,
-        args: [
-          '--no-sandbox',
-          '--disable-setuid-sandbox',
-          '--disable-dev-shm-usage',
-          '--disable-web-security',
-          '--disable-features=IsolateOrigins,site-per-process',
-        ],
-        executablePath: process.env.PUPPETEER_EXECUTABLE_PATH || undefined,
-      });
+    try {
+      if (isProduction && chromium) {
+        // Production: Use @sparticuz/chromium for serverless environments
+        console.log('[PDF Generation] Using @sparticuz/chromium for production');
+        browser = await puppeteer.launch({
+          args: chromium.args,
+          defaultViewport: chromium.defaultViewport,
+          executablePath: await chromium.executablePath(),
+          headless: chromium.headless,
+        });
+      } else {
+        // Development: Use local Chrome/Chromium
+        console.log('[PDF Generation] Using local Puppeteer');
+        browser = await puppeteer.launch({
+          headless: true,
+          args: [
+            '--no-sandbox',
+            '--disable-setuid-sandbox',
+            '--disable-dev-shm-usage',
+            '--disable-web-security',
+            '--disable-features=IsolateOrigins,site-per-process',
+          ],
+          executablePath: process.env.PUPPETEER_EXECUTABLE_PATH || undefined,
+        });
+      }
+      console.log('[PDF Generation] Puppeteer browser launched successfully');
+    } catch (puppeteerError: any) {
+      console.error('[PDF Generation] Failed to launch Puppeteer:', puppeteerError);
+      const errorMessage = puppeteerError.message || 'Unknown error';
+      
+      // Provide helpful error message
+      if (errorMessage.includes('executable') || errorMessage.includes('Chrome')) {
+        return NextResponse.json(
+          {
+            error: 'Failed to generate PDF: Chrome/Chromium not found',
+            details: 'Please install Chrome or Chromium, or set PUPPETEER_EXECUTABLE_PATH environment variable',
+            help: 'In development mode, Puppeteer requires Chrome/Chromium to be installed on your system'
+          },
+          { status: 500 }
+        );
+      }
+      
+      return NextResponse.json(
+        {
+          error: 'Failed to generate PDF: Unable to launch browser',
+          details: errorMessage
+        },
+        { status: 500 }
+      );
     }
-
-    console.log('[PDF Generation] Puppeteer browser launched');
 
     try {
       // Step 6: Render charts as images (in parallel)
@@ -265,13 +308,22 @@ export async function POST(request: NextRequest) {
       }
 
       // Step 7: Build HTML template with logo
-      const logoPath = path.join(process.cwd(), 'public', 'valyu.svg');
-      const logoSvg = fs.readFileSync(logoPath, 'utf-8');
-      const logoBase64 = Buffer.from(logoSvg).toString('base64');
-      const logoDataUrl = `data:image/svg+xml;base64,${logoBase64}`;
+      let logoDataUrl = '';
+      try {
+        const logoPath = path.join(process.cwd(), 'public', 'valyu.svg');
+        if (fs.existsSync(logoPath)) {
+          const logoSvg = fs.readFileSync(logoPath, 'utf-8');
+          const logoBase64 = Buffer.from(logoSvg).toString('base64');
+          logoDataUrl = `data:image/svg+xml;base64,${logoBase64}`;
+        } else {
+          console.warn('[PDF Generation] Logo file not found, continuing without logo');
+        }
+      } catch (error) {
+        console.warn('[PDF Generation] Failed to load logo:', error);
+      }
 
       const htmlContent = buildPdfHtmlTemplate({
-        title: sessionData.title || 'BioMed Research Report',
+        title: sessionData.title || 'Patent Research Report',
         content: markdownWithPlaceholders,
         citations: citations,
         logoDataUrl: logoDataUrl,
@@ -327,10 +379,22 @@ export async function POST(request: NextRequest) {
 
   } catch (error: any) {
     console.error('[PDF Generation] Error:', error);
+    const errorMessage = error?.message || 'Unknown error';
+    
+    // Provide more helpful error messages
+    let userFriendlyError = 'Failed to generate PDF';
+    if (errorMessage.includes('Session not found')) {
+      userFriendlyError = 'Session not found. Please ensure you have messages in this conversation.';
+    } else if (errorMessage.includes('No messages')) {
+      userFriendlyError = 'No messages found in this session.';
+    } else if (errorMessage.includes('Chrome') || errorMessage.includes('executable')) {
+      userFriendlyError = 'PDF generation requires Chrome/Chromium to be installed.';
+    }
+    
     return NextResponse.json(
       {
-        error: 'Failed to generate PDF',
-        details: error.message
+        error: userFriendlyError,
+        details: errorMessage
       },
       { status: 500 }
     );
@@ -346,6 +410,13 @@ async function renderChartAsImage(
   chartId: string
 ): Promise<string> {
   console.log('[PDF Generation] Rendering chart:', chartId);
+
+  // Chart rendering only works in production mode (Supabase)
+  // In development mode, charts might not be stored in DB
+  if (isDevelopmentMode()) {
+    console.warn('[PDF Generation] Chart rendering not fully supported in development mode');
+    return '';
+  }
 
   const supabase = await createClient();
 

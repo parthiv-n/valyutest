@@ -8,39 +8,32 @@ import { createClient } from '@/utils/supabase/server';
 import * as db from '@/lib/db';
 import { randomUUID } from 'crypto';
 
-export const healthcareTools = {
-  // Chart Creation Tool - Create interactive charts for biomedical data visualization
+export const patentTools = {
+  // Chart Creation Tool - Create interactive charts for patent data visualization
   createChart: tool({
-    description: `Create interactive charts for biomedical and clinical data visualization.
+    description: `Create interactive charts for patent data visualization and innovation trend analysis.
 
     CHART TYPES:
-    1. "line" - Time series trends (patient outcomes over time, survival curves, biomarker levels)
-    2. "bar" - Categorical comparisons (treatment group outcomes, drug efficacy comparison)
-    3. "area" - Cumulative data (stacked metrics, composition over time)
-    4. "scatter" - Correlation analysis, drug positioning maps, patient stratification
-    5. "quadrant" - 2x2 clinical matrices (risk stratification, drug selection matrices)
+    1. "line" - Time series trends (patent filings over time, technology evolution, filing trends by year)
+    2. "bar" - Categorical comparisons (top assignees by patent count, technology categories, inventor portfolios)
+    3. "area" - Cumulative data (cumulative patent filings, technology adoption over time)
+    4. "scatter" - Correlation analysis, technology landscape maps, patent positioning
+    5. "quadrant" - 2x2 innovation matrices (maturity vs impact, novelty vs commercial potential)
 
     TIME SERIES CHARTS (line, bar, area):
     {
-      "title": "Pembrolizumab vs Nivolumab Response Rates",
+      "title": "Solid-State Battery Patents - Filing Trends (2015-2024)",
       "type": "line",
-      "xAxisLabel": "Weeks Since Treatment Initiation",
-      "yAxisLabel": "Overall Response Rate (%)",
+      "xAxisLabel": "Year",
+      "yAxisLabel": "Number of Patents Filed",
       "dataSeries": [
         {
-          "name": "Pembrolizumab",
+          "name": "USPTO Filings",
           "data": [
-            {"x": "Week 0", "y": 0},
-            {"x": "Week 4", "y": 32.5},
-            {"x": "Week 12", "y": 45.0}
-          ]
-        },
-        {
-          "name": "Nivolumab",
-          "data": [
-            {"x": "Week 0", "y": 0},
-            {"x": "Week 4", "y": 28.0},
-            {"x": "Week 12", "y": 40.0}
+            {"x": "2015", "y": 45},
+            {"x": "2018", "y": 120},
+            {"x": "2021", "y": 280},
+            {"x": "2024", "y": 450}
           ]
         }
       ]
@@ -50,36 +43,36 @@ export const healthcareTools = {
     Each SERIES represents a CATEGORY (for color coding).
     Each DATA POINT represents an individual entity with x, y, size, and label.
     {
-      "title": "Drug Candidates: Efficacy vs Safety Profile",
+      "title": "Patent Landscape: Technology Maturity vs Commercial Impact",
       "type": "scatter",
-      "xAxisLabel": "Overall Response Rate (%)",
-      "yAxisLabel": "Grade 3+ Adverse Events (%)",
+      "xAxisLabel": "Technology Maturity Score",
+      "yAxisLabel": "Commercial Impact Score",
       "dataSeries": [
         {
-          "name": "Checkpoint Inhibitors",
+          "name": "Battery Technologies",
           "data": [
-            {"x": 45.0, "y": 27.3, "size": 5000, "label": "Pembrolizumab"},
-            {"x": 40.0, "y": 25.1, "size": 4500, "label": "Nivolumab"}
+            {"x": 8.5, "y": 9.2, "size": 450, "label": "US11234567"},
+            {"x": 7.8, "y": 8.5, "size": 320, "label": "US11234568"}
           ]
         },
         {
-          "name": "Chemotherapy",
+          "name": "Semiconductor",
           "data": [
-            {"x": 35.0, "y": 65.0, "size": 3000, "label": "Carboplatin"}
+            {"x": 9.2, "y": 8.8, "size": 280, "label": "US11234569"}
           ]
         }
       ]
     }
 
-    QUADRANT CHARTS (2x2 clinical matrix):
+    QUADRANT CHARTS (2x2 innovation matrix):
     Same as scatter, but with reference lines dividing chart into 4 quadrants.
-    Use for: Risk stratification, treatment selection, drug prioritization.
+    Use for: Technology prioritization, innovation strategy, competitive positioning.
 
     CRITICAL: ALL REQUIRED FIELDS MUST BE PROVIDED.`,
     inputSchema: z.object({
       title: z
         .string()
-        .describe('Chart title (e.g., "Pembrolizumab vs Nivolumab Response Rates")'),
+        .describe('Chart title (e.g., "Solid-State Battery Patents - Filing Trends")'),
       type: z
         .enum(["line", "bar", "area", "scatter", "quadrant"])
         .describe(
@@ -87,11 +80,11 @@ export const healthcareTools = {
         ),
       xAxisLabel: z
         .string()
-        .describe('X-axis label (e.g., "Weeks", "Response Rate (%)", "Risk Score (1-10)")'),
+        .describe('X-axis label (e.g., "Year", "Patent Count", "Technology Category")'),
       yAxisLabel: z
         .string()
         .describe(
-          'Y-axis label (e.g., "Survival Probability", "Adverse Events (%)", "Efficacy Score (1-10)")'
+          'Y-axis label (e.g., "Number of Patents", "Filing Year", "Citation Count", "Impact Score")'
         ),
       dataSeries: z
         .array(
@@ -99,7 +92,7 @@ export const healthcareTools = {
             name: z
               .string()
               .describe(
-                'Series name - For time series: drug/treatment name. For scatter/quadrant: category name for color coding (e.g., "Checkpoint Inhibitors", "Chemotherapy")'
+                'Series name - For time series: technology/company name. For scatter/quadrant: category name for color coding (e.g., "Battery Technologies", "Semiconductor", "Automotive")'
               ),
             data: z
               .array(
@@ -118,13 +111,13 @@ export const healthcareTools = {
                     .number()
                     .optional()
                     .describe(
-                      'Bubble size for scatter/quadrant charts (e.g., patient count, trial size, market size). Larger = bigger bubble.'
+                      'Bubble size for scatter/quadrant charts (e.g., patent count, citation count, market size). Larger = bigger bubble.'
                     ),
                   label: z
                     .string()
                     .optional()
                     .describe(
-                      'Individual entity name for scatter/quadrant charts (e.g., "Pembrolizumab", "Patient Cohort A"). Displayed on/near bubble.'
+                      'Individual entity name for scatter/quadrant charts (e.g., "US11234567", "Tesla Inc.", "Technology A"). Displayed on/near bubble.'
                     ),
                 })
               )
@@ -227,16 +220,16 @@ export const healthcareTools = {
     },
   }),
 
-  // CSV Creation Tool - Generate downloadable CSV files for biomedical data
+  // CSV Creation Tool - Generate downloadable CSV files for patent data
   createCSV: tool({
-    description: `Create downloadable CSV files for biomedical data, research tables, and analysis results.
+    description: `Create downloadable CSV files for patent data, innovation analysis, and research tables.
 
     USE CASES:
-    - Export clinical trial results (patient demographics, outcomes, adverse events)
-    - Create comparison tables (drug efficacy, treatment protocols, biomarkers)
-    - Generate time series data exports (lab values over time, vital signs)
-    - Build data tables for further analysis (gene expression, protein levels)
-    - Create custom research reports (literature review summaries, study comparisons)
+    - Export patent search results (patent numbers, titles, inventors, assignees, filing dates)
+    - Create comparison tables (patent portfolios by company, technology categories, inventor analysis)
+    - Generate time series data exports (patent filings over time, technology trends)
+    - Build data tables for further analysis (citation networks, patent families, competitive landscapes)
+    - Create custom research reports (patent landscape summaries, innovation trend analysis)
 
     REFERENCING CSVs IN MARKDOWN:
     After creating a CSV, you MUST reference it in your markdown response to display it as an inline table.
@@ -259,40 +252,40 @@ export const healthcareTools = {
     - Add a title/description to explain the data
     - Organize data logically (chronological, by treatment group, or by significance)
 
-    EXAMPLE - Drug Comparison:
+    EXAMPLE - Patent Comparison:
     {
-      "title": "Immunotherapy Drugs - Efficacy Comparison in NSCLC",
-      "description": "Key clinical outcomes for checkpoint inhibitors in non-small cell lung cancer",
-      "headers": ["Drug", "ORR (%)", "mPFS (months)", "mOS (months)", "Grade 3+ AE (%)", "FDA Approval"],
+      "title": "Solid-State Battery Patents - Key Innovations",
+      "description": "Top patents in solid-state battery manufacturing technology",
+      "headers": ["Patent Number", "Title", "Assignee", "Filing Date", "Inventors", "Citations"],
       "rows": [
-        ["Pembrolizumab", "45.0", "10.3", "30.0", "27.3", "2016"],
-        ["Nivolumab", "40.0", "9.2", "28.0", "25.1", "2015"],
-        ["Atezolizumab", "38.0", "8.8", "26.5", "22.5", "2016"]
+        ["US11234567", "Solid-state battery with ceramic electrolyte", "Tesla Inc.", "2021-03-15", "John Doe, Jane Smith", "45"],
+        ["US11234568", "Manufacturing method for solid-state cells", "Toyota Motor Corp.", "2020-11-20", "Akira Tanaka", "38"],
+        ["US11234569", "Electrode structure for solid-state battery", "QuantumScape", "2022-01-10", "Robert Chen", "52"]
       ]
     }
 
-    EXAMPLE - Clinical Trial Results:
+    EXAMPLE - Patent Filing Trends:
     {
-      "title": "Phase 3 Trial - Patient Demographics",
-      "description": "Baseline characteristics of enrolled patients (N=450)",
-      "headers": ["Characteristic", "Treatment Arm (n=225)", "Control Arm (n=225)", "p-value"],
+      "title": "Patent Filings by Year - Battery Technology",
+      "description": "USPTO patent filings in battery technology (2015-2024)",
+      "headers": ["Year", "Total Filings", "Solid-State", "Lithium-Ion", "Other"],
       "rows": [
-        ["Age, mean (SD)", "62.5 (8.3)", "61.8 (9.1)", "0.45"],
-        ["Male, n (%)", "135 (60%)", "142 (63%)", "0.52"],
-        ["Stage IV, n (%)", "180 (80%)", "175 (78%)", "0.61"]
+        ["2015", "245", "45", "180", "20"],
+        ["2018", "520", "120", "350", "50"],
+        ["2021", "890", "280", "520", "90"],
+        ["2024", "1240", "450", "680", "110"]
       ]
     }
 
-    EXAMPLE - Lab Values Over Time:
+    EXAMPLE - Assignee Portfolio Analysis:
     {
-      "title": "Patient 001 - Complete Blood Count Trends",
-      "description": "CBC values during treatment (baseline to week 12)",
-      "headers": ["Week", "WBC (K/uL)", "RBC (M/uL)", "Hemoglobin (g/dL)", "Platelets (K/uL)"],
+      "title": "Top Patent Assignees - Solid-State Battery Technology",
+      "description": "Companies with most patents in solid-state battery field",
+      "headers": ["Assignee", "Patent Count", "Earliest Filing", "Latest Filing", "Avg Citations"],
       "rows": [
-        ["Baseline", "7.2", "4.5", "13.8", "245"],
-        ["Week 4", "6.8", "4.3", "13.2", "230"],
-        ["Week 8", "7.0", "4.4", "13.5", "238"],
-        ["Week 12", "7.3", "4.6", "14.0", "250"]
+        ["Tesla Inc.", "45", "2018-05-12", "2024-02-28", "32.5"],
+        ["Toyota Motor Corp.", "38", "2017-11-03", "2024-01-15", "28.2"],
+        ["QuantumScape", "32", "2019-02-20", "2024-03-10", "41.8"]
       ]
     }
 
@@ -399,18 +392,19 @@ export const healthcareTools = {
   }),
 
   codeExecution: tool({
-    description: `Execute Python code securely in a Daytona Sandbox for biomedical data analysis, statistical calculations, and pharmacokinetic modeling.
+    description: `Execute Python code securely in a Daytona Sandbox for patent data analysis, statistical calculations, and trend analysis.
 
     CRITICAL: Always include print() statements to show results. Maximum 10,000 characters.
 
-    Example for biomedical calculations:
-    # Calculate drug half-life
+    Example for patent trend analysis:
+    # Calculate patent filing growth rate
     import math
-    initial_concentration = 100  # mg/L
-    final_concentration = 50     # mg/L
-    time_elapsed = 4             # hours
-    half_life = time_elapsed * (math.log(2) / math.log(initial_concentration / final_concentration))
-    print(f"Calculated half-life: {half_life:.2f} hours")`,
+    patents_2015 = 45
+    patents_2024 = 450
+    years = 9
+    growth_rate = ((patents_2024 / patents_2015) ** (1/years) - 1) * 100
+    print(f"Annual growth rate: {growth_rate:.2f}%")
+    print(f"Total growth over {years} years: {(patents_2024/patents_2015 - 1)*100:.1f}%")`,
     inputSchema: z.object({
       code: z.string().describe('Python code to execute - MUST include print() statements'),
       description: z.string().optional().describe('Brief description of the calculation'),
@@ -498,11 +492,13 @@ ${execution.result || '(No output produced)'}
     },
   }),
 
-  clinicalTrialsSearch: tool({
-    description: "Search for clinical trials based on conditions, drugs, or research criteria using ClinicalTrials.gov data",
+  patentSearch: tool({
+    description: `Search USPTO patents by technology, inventor, assignee, claims, or patent number. Returns real patent data including patent numbers, titles, abstracts, filing dates, inventors, and assignees.
+
+IMPORTANT: When users ask for "examples" or multiple patents, use maxResults=15-20 to get comprehensive coverage. For single patent lookups, maxResults=5-10 is sufficient.`,
     inputSchema: z.object({
-      query: z.string().describe('Clinical trials search query (e.g., "Phase 3 melanoma immunotherapy")'),
-      maxResults: z.number().min(1).max(20).optional().default(10).describe('Maximum number of results'),
+      query: z.string().describe('Patent search query (e.g., "solid-state battery manufacturing", "Tesla autonomous driving", "US11234567")'),
+      maxResults: z.coerce.number().int().min(1).max(20).optional().default(15).describe('Maximum number of results (must be an integer between 1 and 20). Use 15-20 when user asks for "examples" or multiple patents. Default: 15'),
     }),
     execute: async ({ query, maxResults }, options) => {
       const userId = (options as any)?.experimental_context?.userId;
@@ -517,16 +513,17 @@ ${execution.result || '(No output produced)'}
         }
         const valyu = new Valyu(apiKey, "https://api.valyu.network/v1");
 
+        // Try USPTO source - Valyu may use different source names, adjust if needed
         const response = await valyu.search(query, {
-          maxNumResults: 6,
+          maxNumResults: maxResults || 10,
           searchType: "proprietary",
-          includedSources: ["valyu/valyu-clinical-trials"],
+          includedSources: ["valyu/valyu-uspto"], // Verify exact source name with Valyu docs
           relevanceThreshold: 0.4,
           isToolCall: true,
         });
 
         await track("Valyu API Call", {
-          toolType: "clinicalTrialsSearch",
+          toolType: "patentSearch",
           query: query,
           resultCount: response?.results?.length || 0,
         });
@@ -535,35 +532,35 @@ ${execution.result || '(No output produced)'}
           try {
             const polarTracker = new PolarEventTracker();
             const valyuCostDollars = (response as any)?.total_deduction_dollars || 0;
-            await polarTracker.trackValyuAPIUsage(userId, sessionId, "clinicalTrialsSearch", valyuCostDollars, {
+            await polarTracker.trackValyuAPIUsage(userId, sessionId, "patentSearch", valyuCostDollars, {
               query,
               resultCount: response?.results?.length || 0,
               success: true,
             });
           } catch (error) {
-            console.error('[ClinicalTrialsSearch] Failed to track usage:', error);
+            console.error('[PatentSearch] Failed to track usage:', error);
           }
         }
 
         return JSON.stringify({
-          type: "clinical_trials",
+          type: "patents",
           query: query,
           resultCount: response?.results?.length || 0,
           results: response?.results || [],
-          favicon: 'https://clinicaltrials.gov/favicon.ico',
-          displaySource: 'ClinicalTrials.gov'
+          favicon: 'https://www.uspto.gov/favicon.ico',
+          displaySource: 'USPTO (via Valyu)'
         }, null, 2);
       } catch (error) {
-        return `❌ Error searching clinical trials: ${error instanceof Error ? error.message : 'Unknown error'}`;
+        return `❌ Error searching patents: ${error instanceof Error ? error.message : 'Unknown error'}`;
       }
     },
   }),
 
-  drugInformationSearch: tool({
-    description: "Search FDA drug labels for medication information, warnings, contraindications using DailyMed data",
+  patentAnalysis: tool({
+    description: "Deep dive into specific patents for detailed analysis including citations, patent families, legal status, and related patents. Use this for comprehensive patent research and competitive intelligence.",
     inputSchema: z.object({
-      query: z.string().describe('Drug information search query (e.g., "warfarin contraindications")'),
-      maxResults: z.number().min(1).max(10).optional().default(5).describe('Maximum number of results'),
+      query: z.string().describe('Patent analysis query (e.g., "US11234567", "patent citations for solid-state battery", "patent family US11234567")'),
+      maxResults: z.coerce.number().int().min(1).max(10).optional().default(5).describe('Maximum number of results (must be an integer between 1 and 10)'),
     }),
     execute: async ({ query, maxResults }, options) => {
       const userId = (options as any)?.experimental_context?.userId;
@@ -578,16 +575,17 @@ ${execution.result || '(No output produced)'}
         }
         const valyu = new Valyu(apiKey, "https://api.valyu.network/v1");
 
+        // Search for patent details, citations, and related patents
         const response = await valyu.search(query, {
           maxNumResults: maxResults || 5,
           searchType: "proprietary",
-          includedSources: ["valyu/valyu-drug-labels"],
+          includedSources: ["valyu/valyu-uspto"], // May need to combine with web search for litigation/news
           relevanceThreshold: 0.5,
           isToolCall: true,
         });
 
         await track("Valyu API Call", {
-          toolType: "drugInformationSearch",
+          toolType: "patentAnalysis",
           query: query,
           resultCount: response?.results?.length || 0,
         });
@@ -596,92 +594,36 @@ ${execution.result || '(No output produced)'}
           try {
             const polarTracker = new PolarEventTracker();
             const valyuCostDollars = (response as any)?.total_deduction_dollars || 0;
-            await polarTracker.trackValyuAPIUsage(userId, sessionId, "drugInformationSearch", valyuCostDollars, {
+            await polarTracker.trackValyuAPIUsage(userId, sessionId, "patentAnalysis", valyuCostDollars, {
               query,
               resultCount: response?.results?.length || 0,
               success: true,
             });
           } catch (error) {
-            console.error('[DrugInformationSearch] Failed to track usage:', error);
+            console.error('[PatentAnalysis] Failed to track usage:', error);
           }
         }
 
         return JSON.stringify({
-          type: "drug_information",
+          type: "patent_analysis",
           query: query,
           resultCount: response?.results?.length || 0,
           results: response?.results || [],
-          favicon: 'https://dailymed.nlm.nih.gov/dailymed/image/NLM-logo.png',
-          displaySource: 'DailyMed (NIH)'
+          favicon: 'https://www.uspto.gov/favicon.ico',
+          displaySource: 'USPTO (via Valyu)'
         }, null, 2);
       } catch (error) {
-        return `❌ Error searching drug information: ${error instanceof Error ? error.message : 'Unknown error'}`;
+        return `❌ Error analyzing patents: ${error instanceof Error ? error.message : 'Unknown error'}`;
       }
     },
   }),
 
-  biomedicalLiteratureSearch: tool({
-    description: "Search PubMed, ArXiv, and academic journals for scientific papers and biomedical research",
-    inputSchema: z.object({
-      query: z.string().describe('Biomedical literature search query (e.g., "CRISPR gene editing safety")'),
-      maxResults: z.number().min(1).max(20).optional().default(10).describe('Maximum number of results'),
-    }),
-    execute: async ({ query, maxResults }, options) => {
-      const userId = (options as any)?.experimental_context?.userId;
-      const sessionId = (options as any)?.experimental_context?.sessionId;
-      const userTier = (options as any)?.experimental_context?.userTier;
-      const isDevelopment = process.env.NEXT_PUBLIC_APP_MODE === 'development';
-
-      try {
-        const apiKey = process.env.VALYU_API_KEY;
-        if (!apiKey) {
-          return "❌ Valyu API key not configured.";
-        }
-        const valyu = new Valyu(apiKey, "https://api.valyu.network/v1");
-
-        const response = await valyu.search(query, {
-          maxNumResults: maxResults || 10,
-          searchType: "proprietary",
-          includedSources: ["valyu/valyu-pubmed", "valyu/valyu-arxiv", "valyu/valyu-medrxiv", "valyu/valyu-biorxiv"],
-        });
-
-        await track("Valyu API Call", {
-          toolType: "biomedicalLiteratureSearch",
-          query: query,
-          resultCount: response?.results?.length || 0,
-        });
-
-        if (userId && sessionId && userTier === 'pay_per_use' && !isDevelopment) {
-          try {
-            const polarTracker = new PolarEventTracker();
-            const valyuCostDollars = (response as any)?.total_deduction_dollars || 0;
-            await polarTracker.trackValyuAPIUsage(userId, sessionId, "biomedicalLiteratureSearch", valyuCostDollars, {
-              query,
-              resultCount: response?.results?.length || 0,
-              success: true,
-            });
-          } catch (error) {
-            console.error('[BiomedicalLiteratureSearch] Failed to track usage:', error);
-          }
-        }
-
-        return JSON.stringify({
-          type: "biomedical_literature",
-          query: query,
-          resultCount: response?.results?.length || 0,
-          results: response?.results || [],
-        }, null, 2);
-      } catch (error) {
-        return `❌ Error searching biomedical literature: ${error instanceof Error ? error.message : 'Unknown error'}`;
-      }
-    },
-  }),
 
   webSearch: tool({
     description: "Search the web for general information on any topic",
     inputSchema: z.object({
       query: z.string().describe('Search query for any topic'),
-      maxResults: z.number().min(1).max(20).optional().default(5).describe('Maximum number of results'),
+      maxResults: z.coerce.number().int().min(1).max(20).optional().default(5).describe('Maximum number of results (must be an integer between 1 and 20)'),
     }),
     execute: async ({ query, maxResults }, options) => {
       const userId = (options as any)?.experimental_context?.userId;
@@ -732,4 +674,5 @@ ${execution.result || '(No output produced)'}
 };
 
 // Export with both names for compatibility
-export const biomedicalTools = healthcareTools;
+export const healthcareTools = patentTools;
+export const biomedicalTools = patentTools;

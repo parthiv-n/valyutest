@@ -7,9 +7,9 @@ import Image from "next/image";
 
 const logos = [
   {
-    name: "PubMed Literature",
-    src: "/pubmed.svg",
-    description: "Access PubMed biomedical literature",
+    name: "USPTO Patents",
+    src: "/assets/banner/uspto.png",
+    description: "Search USPTO patents with real patent numbers",
     snippets: [
       {
         language: "Python",
@@ -17,16 +17,17 @@ const logos = [
 
 valyu = Valyu(api_key="<your_api_key>")
 
-# Search for biomedical literature
+# Search for patents
 response = valyu.search(
-    "pembrolizumab efficacy in NSCLC",
-    included_sources=["valyu/valyu-pubmed"]
+    "solid-state battery manufacturing",
+    included_sources=["valyu/valyu-uspto"]
     # or leave included_sources empty and we'll figure it out for you
 )
 
 # Access the results
 for result in response.results:
-    print(f"Title: {result.title}")
+    print(f"Patent: {result.title}")
+    print(f"Number: {result.metadata.get('patent_number', 'N/A')}")
     print(f"Content: {result.content[:200]}...")`,
       },
       {
@@ -35,15 +36,17 @@ for result in response.results:
 
 const valyu = new Valyu({ apiKey: '<your_api_key>' });
 
-// Search for biomedical literature
+// Search for patents
 const response = await valyu.search({
-    query: 'pembrolizumab efficacy in NSCLC',
-    includedSources: ['valyu/valyu-pubmed'],
+    query: 'solid-state battery manufacturing',
+    includedSources: ['valyu/valyu-uspto'],
     // or leave included_sources empty and we'll figure it out for you
 });
 
 // Access the results
 response.results.forEach(result => {
+    console.log('Patent:', result.title);
+    console.log('Number:', result.metadata?.patent_number);
 });`,
       },
       {
@@ -52,16 +55,16 @@ response.results.forEach(result => {
   -H "x-api-key: <your_api_key>" \\
   -H "Content-Type: application/json" \\
   -d '{
-    "query": "pembrolizumab efficacy in NSCLC",
-    "included_sources": ["valyu/valyu-pubmed"] # or leave this empty and we'll figure it out for you
+    "query": "solid-state battery manufacturing",
+    "included_sources": ["valyu/valyu-uspto"] # or leave this empty and we'll figure it out for you
   }'`,
       },
     ],
   },
   {
-    name: "arXiv Papers",
-    src: "/arxiv.svg",
-    description: "Search academic papers from arXiv",
+    name: "Web Search",
+    src: "/web.svg",
+    description: "Search the web for patent news and market context",
     snippets: [
       {
         language: "Python",
@@ -71,8 +74,8 @@ valyu = Valyu(api_key="<your_api_key>")
 
 # Search for academic papers
 response = valyu.search(
-    "transformer architecture attention mechanism",
-    included_sources=["valyu/valyu-arxiv"] # or leave this empty and we'll figure it out for you
+    "patent litigation news",
+    searchType="all" # Search web for patent news and market context
 )
 
 # Get paper details

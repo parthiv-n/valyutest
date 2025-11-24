@@ -6,6 +6,11 @@ import { openai } from "@ai-sdk/openai";
 let llmIngestion: any = null;
 
 export function initializePolarLLMStrategy() {
+  // Skip in development mode
+  if (process.env.NEXT_PUBLIC_APP_MODE === 'development') {
+    return null;
+  }
+
   if (!process.env.POLAR_ACCESS_TOKEN) {
     throw new Error('POLAR_ACCESS_TOKEN required for LLM tracking');
   }
@@ -25,8 +30,16 @@ export function initializePolarLLMStrategy() {
 
 // Get a wrapped model for a specific customer
 export function getPolarTrackedModel(userId: string, modelName: string = "gpt-5") {
+  // Skip in development mode - return regular OpenAI model
+  if (process.env.NEXT_PUBLIC_APP_MODE === 'development') {
+    return openai(modelName);
+  }
+
   const ingestion = initializePolarLLMStrategy();
   
+  if (!ingestion) {
+    return openai(modelName);
+  }
   
   // Return the wrapped model with customer tracking
   const trackedModel = ingestion.client({
@@ -38,6 +51,11 @@ export function getPolarTrackedModel(userId: string, modelName: string = "gpt-5"
 
 // Alternative function to get different model types
 export function getPolarTrackedOpenAIModel(userId: string, modelName: string = "gpt-5") {
+  // Skip in development mode - return regular OpenAI model
+  if (process.env.NEXT_PUBLIC_APP_MODE === 'development') {
+    return openai(modelName);
+  }
+
   if (!process.env.POLAR_ACCESS_TOKEN) {
     return openai(modelName);
   }

@@ -10,18 +10,20 @@ export function validatePaymentEnvironment(): EnvValidationResult {
   const errors: string[] = [];
   const warnings: string[] = [];
   
-  const isDevelopment = process.env.NODE_ENV === 'development';
+  const isDevelopment = process.env.NEXT_PUBLIC_APP_MODE === 'development';
   const isProduction = !isDevelopment;
 
-  // Core Supabase requirements (always required)
-  if (!process.env.NEXT_PUBLIC_SUPABASE_URL) {
-    errors.push('NEXT_PUBLIC_SUPABASE_URL is required');
-  }
-  if (!process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY) {
-    errors.push('NEXT_PUBLIC_SUPABASE_ANON_KEY is required');
-  }
-  if (!process.env.SUPABASE_SERVICE_ROLE_KEY) {
-    errors.push('SUPABASE_SERVICE_ROLE_KEY is required');
+  // Core Supabase requirements (only required in production mode)
+  if (!isDevelopment) {
+    if (!process.env.NEXT_PUBLIC_SUPABASE_URL) {
+      errors.push('NEXT_PUBLIC_SUPABASE_URL is required');
+    }
+    if (!process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY) {
+      errors.push('NEXT_PUBLIC_SUPABASE_ANON_KEY is required');
+    }
+    if (!process.env.SUPABASE_SERVICE_ROLE_KEY) {
+      errors.push('SUPABASE_SERVICE_ROLE_KEY is required');
+    }
   }
 
   // Production-only requirements
@@ -42,24 +44,20 @@ export function validatePaymentEnvironment(): EnvValidationResult {
     
     // API keys for usage tracking
     if (!process.env.VALYU_API_KEY) {
-      warnings.push('VALYU_API_KEY missing - biomedical/web search will fail');
+      warnings.push('VALYU_API_KEY missing - patent search will fail');
     }
     if (!process.env.DAYTONA_API_KEY) {
       warnings.push('DAYTONA_API_KEY missing - code execution will fail');
     }
-    if (!process.env.OPENAI_API_KEY) {
-      warnings.push('OPENAI_API_KEY missing - will use Vercel AI Gateway');
+    // Vercel AI Gateway is required (per task requirements)
+    if (!process.env.AI_GATEWAY_API_KEY) {
+      errors.push('AI_GATEWAY_API_KEY is required - get your key at https://vercel.com/dashboard > AI Gateway > API Keys');
     }
   }
 
-  // Development warnings
-  if (isDevelopment) {
-    if (!process.env.POLAR_ACCESS_TOKEN) {
-      warnings.push('POLAR_ACCESS_TOKEN missing - payment testing will be limited');
-    }
-    if (!process.env.POLAR_PAY_PER_USE_PRODUCT_ID) {
-      warnings.push('POLAR_PAY_PER_USE_PRODUCT_ID missing - cannot test pay-per-use flow');
-    }
+  // Development mode - AI Gateway still recommended but not strictly required
+  if (isDevelopment && !process.env.AI_GATEWAY_API_KEY) {
+    warnings.push('AI_GATEWAY_API_KEY missing - recommended for Vercel AI SDK integration');
   }
 
   // Validate URL formats
@@ -75,8 +73,16 @@ export function validatePaymentEnvironment(): EnvValidationResult {
 }
 
 export function logEnvironmentStatus(): void {
+  const appMode = process.env.NEXT_PUBLIC_APP_MODE;
+  const isDevelopment = appMode === 'development';
+  
+  // Skip validation in development mode
+  if (isDevelopment) {
+    console.log('[Env] Development mode detected - skipping Supabase/Polar validation');
+    return;
+  }
+  
   const validation = validatePaymentEnvironment();
-  const isDevelopment = process.env.NODE_ENV === 'development';
   
   if (validation.valid) {
   } else {
@@ -88,8 +94,8 @@ export function logEnvironmentStatus(): void {
   }
 }
 
-// Auto-validate on import in production
-if (process.env.NODE_ENV !== 'development') {
+// Auto-validate on import in production (only if not in development mode)
+if (process.env.NEXT_PUBLIC_APP_MODE !== 'development') {
   const validation = validatePaymentEnvironment();
   if (!validation.valid) {
     validation.errors.forEach(error => console.error(`  - ${error}`));

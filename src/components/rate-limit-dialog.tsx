@@ -35,16 +35,16 @@ export function RateLimitDialog({ open, onOpenChange, resetTime, onShowAuth }: R
   
   // Dynamic example queries
   const exampleQueries = useMemo(() => [
-    "Latest Alzheimer's drug approvals",
-    "Immunotherapy advancements in lung cancer",
-    "Phase 3 trials for melanoma CAR-T therapy",
-    "Pembrolizumab efficacy in NSCLC",
-    "CRISPR safety in human trials",
-    "Drug interactions between metformin and lisinopril",
-    "COVID-19 vaccine efficacy comparison",
-    "mRNA vaccine technology developments",
-    "Monoclonal antibody treatments for cancer",
-    "Gene therapy clinical trial outcomes"
+    "Show me key patents related to solid-state battery manufacturing",
+    "Find patents by Tesla in autonomous driving technology",
+    "Analyze patent trends in CRISPR technology over the past 10 years",
+    "What are the top assignees for quantum computing patents?",
+    "Compare different approaches to neural signal processing in brain implants",
+    "Search for patents related to AI chip architecture",
+    "Analyze innovation trends in electric vehicle batteries",
+    "Find recent patents in mRNA vaccine technology",
+    "What are key patents in gene editing technology?",
+    "Show me patents related to renewable energy storage"
   ], []);
 
   const [currentExampleIndex, setCurrentExampleIndex] = useState(0);

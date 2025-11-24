@@ -7,7 +7,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import BottomBar from '@/components/bottom-bar';
 import Image from 'next/image';
 import { track } from '@vercel/analytics';
-import { createClient } from '@/utils/supabase/client';
+import { createClient } from '@/utils/supabase/client-wrapper';
 import { Button } from '@/components/ui/button';
 import {
   CheckCircle,
@@ -328,7 +328,7 @@ function HomeContent() {
                   }}
                   transition={{ duration: 0.3, ease: [0.23, 1, 0.32, 1] }}
                 >
-                  Bio
+                  Patent Explorer
                 </motion.h1>
                 
                 {/* "By Valyu" that slides out from under */}
@@ -378,7 +378,7 @@ function HomeContent() {
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ delay: 0.2, duration: 0.6, ease: "easeOut" }}
               >
-                Powered by Valyu&apos;s specialized biomedical data infrastructure for comprehensive research
+                Powered by Valyu&apos;s patent data infrastructure for real patent search and innovation analysis
               </motion.p>
             </motion.div>
           )}

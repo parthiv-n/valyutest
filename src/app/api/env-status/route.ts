@@ -4,6 +4,7 @@ export const runtime = "nodejs";
 
 export async function GET() {
   try {
+    const isDevelopment = process.env.NEXT_PUBLIC_APP_MODE === 'development';
     const valyuKeyPresent = !!process.env.VALYU_API_KEY;
     const daytonaKeyPresent = !!process.env.DAYTONA_API_KEY;
     const openaiKeyPresent = !!process.env.OPENAI_API_KEY;
@@ -15,6 +16,8 @@ export async function GET() {
         daytonaKeyPresent,
         openaiKeyPresent,
         aiGatewayKeyPresent,
+        aiGatewayRequired: !isDevelopment, // Required in production, recommended in dev
+        isDevelopment,
       },
       { status: 200, headers: { "Content-Type": "application/json" } }
     );

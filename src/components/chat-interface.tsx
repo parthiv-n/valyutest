@@ -2566,7 +2566,10 @@ export function ChatInterface({
 
       if (!response.ok) {
         const error = await response.json();
-        throw new Error(error.error || 'Failed to generate PDF');
+        const errorMessage = error.error || 'Failed to generate PDF';
+        const errorDetails = error.details ? `\n\nDetails: ${error.details}` : '';
+        const errorHelp = error.help ? `\n\n${error.help}` : '';
+        throw new Error(errorMessage + errorDetails + errorHelp);
       }
 
       // Get PDF blob
@@ -2594,7 +2597,9 @@ export function ChatInterface({
         messageCount: messages.length,
       });
     } catch (err) {
-      alert('Failed to generate PDF. Please try again.');
+      const errorMessage = err instanceof Error ? err.message : 'Failed to generate PDF. Please try again.';
+      alert(errorMessage);
+      console.error('[PDF Download] Error:', err);
     } finally {
       setIsDownloadingPDF(false);
     }
@@ -2743,7 +2748,7 @@ export function ChatInterface({
                   <motion.button
                     onClick={() =>
                       handlePromptClick(
-                        "Calculate the half-life of warfarin based on plasma concentrations: 8mg/L at 0 hours, 4mg/L at 36 hours. Use Python to determine the elimination rate constant, volume of distribution, and clearance. Visualize the concentration-time curve with confidence intervals."
+                        "Show me key patents related to solid-state battery manufacturing. Analyze the different approaches, identify the main assignees, and create a chart showing patent filing trends over the past 10 years."
                       )
                     }
                     className="bg-gray-50 dark:bg-gray-800/50 p-2.5 sm:p-4 rounded-xl border border-gray-100 dark:border-gray-700 hover:border-gray-200 dark:hover:border-gray-600 transition-colors hover:bg-gray-100 dark:hover:bg-gray-800 text-left group"
@@ -2753,17 +2758,17 @@ export function ChatInterface({
                     whileTap={{ scale: 0.98 }}
                   >
                     <div className="text-gray-700 dark:text-gray-300 mb-1.5 sm:mb-2 text-xs sm:text-sm font-medium group-hover:text-gray-900 dark:group-hover:text-gray-100">
-                      🐍 Pharmacokinetics
+                      🔋 Patent Search
                     </div>
                     <div className="text-[10px] sm:text-xs text-gray-500 dark:text-gray-400">
-                      Advanced Python modeling & calculations
+                      Technology landscape & trends
                     </div>
                   </motion.button>
 
                   <motion.button
                     onClick={() =>
                       handlePromptClick(
-                        "Search for recent Phase 3 clinical trials investigating CAR-T therapy for melanoma. Extract key endpoints, patient populations, and efficacy results. Compare different CAR-T constructs and their response rates."
+                        "Find patents by Tesla in autonomous driving technology. Analyze the key innovations, compare different approaches to sensor fusion and decision-making systems, and identify the most recent filings."
                       )
                     }
                     className="bg-gray-50 dark:bg-gray-800/50 p-2.5 sm:p-4 rounded-xl border border-gray-100 dark:border-gray-700 hover:border-gray-200 dark:hover:border-gray-600 transition-colors hover:bg-gray-100 dark:hover:bg-gray-800 text-left group"
@@ -2773,17 +2778,17 @@ export function ChatInterface({
                     whileTap={{ scale: 0.98 }}
                   >
                     <div className="text-gray-700 dark:text-gray-300 mb-1.5 sm:mb-2 text-xs sm:text-sm font-medium group-hover:text-gray-900 dark:group-hover:text-gray-100">
-                      🧬 Clinical Trials
+                      🚗 Patent Analysis
                     </div>
                     <div className="text-[10px] sm:text-xs text-gray-500 dark:text-gray-400">
-                      Phase data & efficacy analysis
+                      Company portfolios & innovations
                     </div>
                   </motion.button>
 
                   <motion.button
                     onClick={() =>
                       handlePromptClick(
-                        "Find recent PubMed papers on CRISPR gene editing safety in human trials. Create a CSV with study details, adverse events, off-target effects, and success rates. Generate charts showing safety trends over time and correlation with delivery methods."
+                        "Analyze patent trends in CRISPR technology over the past 10 years. Create a CSV with patent numbers, filing dates, assignees, and key innovations. Generate charts showing filing trends by year, top assignees, and technology evolution."
                       )
                     }
                     className="bg-gray-50 dark:bg-gray-800/50 p-2.5 sm:p-4 rounded-xl border border-gray-100 dark:border-gray-700 hover:border-gray-200 dark:hover:border-gray-600 transition-colors hover:bg-gray-100 dark:hover:bg-gray-800 text-left group"
@@ -2793,17 +2798,17 @@ export function ChatInterface({
                     whileTap={{ scale: 0.98 }}
                   >
                     <div className="text-gray-700 dark:text-gray-300 mb-1.5 sm:mb-2 text-xs sm:text-sm font-medium group-hover:text-gray-900 dark:group-hover:text-gray-100">
-                      📚 Literature Analysis
+                      📈 Innovation Trends
                     </div>
                     <div className="text-[10px] sm:text-xs text-gray-500 dark:text-gray-400">
-                      PubMed research & meta-analysis
+                      Patent trends & technology evolution
                     </div>
                   </motion.button>
 
                   <motion.button
                     onClick={() =>
                       handlePromptClick(
-                        "Search FDA drug labels for interactions between metformin, lisinopril, and atorvastatin. Identify contraindications, dosing adjustments, and mechanism of interactions. Create a comprehensive CSV with interaction severity, clinical significance, and monitoring recommendations."
+                        "What are the top assignees for quantum computing patents? Analyze their patent portfolios, identify key innovations, and compare their approaches to quantum error correction and qubit architectures."
                       )
                     }
                     className="bg-gray-50 dark:bg-gray-800/50 p-2.5 sm:p-4 rounded-xl border border-gray-100 dark:border-gray-700 hover:border-gray-200 dark:hover:border-gray-600 transition-colors hover:bg-gray-100 dark:hover:bg-gray-800 text-left group"
@@ -2813,17 +2818,17 @@ export function ChatInterface({
                     whileTap={{ scale: 0.98 }}
                   >
                     <div className="text-gray-700 dark:text-gray-300 mb-1.5 sm:mb-2 text-xs sm:text-sm font-medium group-hover:text-gray-900 dark:group-hover:text-gray-100">
-                      💊 Drug Interactions
+                      🏢 Competitive Intelligence
                     </div>
                     <div className="text-[10px] sm:text-xs text-gray-500 dark:text-gray-400">
-                      FDA labels & safety data
+                      Top assignees & portfolio analysis
                     </div>
                   </motion.button>
 
                   <motion.button
                     onClick={() =>
                       handlePromptClick(
-                        "Compare efficacy rates of the 5 major COVID-19 vaccines (Pfizer, Moderna, AstraZeneca, J&J, Novavax). Create a CSV with trial data: efficacy percentages, sample sizes, variant coverage, and adverse event rates. Generate visualizations showing: 1) Efficacy comparison by variant, 2) Safety profiles, 3) Durability of protection over time."
+                        "Compare different approaches to neural signal processing in brain implantable devices. Find patents from different companies, analyze their technical approaches, and create a comparative analysis of their innovations. Generate charts showing patent filing trends and assignee portfolios."
                       )
                     }
                     className="bg-gray-50 dark:bg-gray-800/50 p-2.5 sm:p-4 rounded-xl border border-gray-100 dark:border-gray-700 hover:border-gray-200 dark:hover:border-gray-600 transition-colors hover:bg-gray-100 dark:hover:bg-gray-800 text-left group"
@@ -2833,17 +2838,17 @@ export function ChatInterface({
                     whileTap={{ scale: 0.98 }}
                   >
                     <div className="text-gray-700 dark:text-gray-300 mb-1.5 sm:mb-2 text-xs sm:text-sm font-medium group-hover:text-gray-900 dark:group-hover:text-gray-100">
-                      📊 Comparative Study
+                      🔬 Comparative Analysis
                     </div>
                     <div className="text-[10px] sm:text-xs text-gray-500 dark:text-gray-400">
-                      Multi-drug comparison with charts
+                      Technology approaches & comparisons
                     </div>
                   </motion.button>
 
                   <motion.button
                     onClick={() =>
                       handlePromptClick(
-                        "Do an in-depth analysis of pembrolizumab (Keytruda) for non-small cell lung cancer. Search clinical trials for efficacy data, find PubMed papers on mechanism of action and biomarkers, review FDA drug label for dosing and contraindications. Use Python to analyze trial data and create comprehensive CSV with: Trial phase, patient population, PD-L1 expression levels, response rates, progression-free survival, overall survival, and adverse events. Generate charts comparing outcomes across different patient subgroups."
+                        "Do a comprehensive patent landscape analysis of AI chip architecture. Search for patents from major tech companies, analyze different approaches to neural processing units, identify key innovations, and compare assignee portfolios. Use Python to analyze filing trends and create charts showing technology evolution, competitive positioning, and innovation gaps."
                       )
                     }
                     className="bg-gradient-to-r from-blue-50 to-purple-50 dark:from-blue-900/20 dark:to-purple-900/20 p-2.5 sm:p-4 rounded-xl border border-blue-200 dark:border-blue-700 hover:border-blue-300 dark:hover:border-blue-600 transition-colors hover:from-blue-100 hover:to-purple-100 dark:hover:from-blue-900/30 dark:hover:to-purple-900/30 text-left group col-span-1 sm:col-span-2 lg:col-span-1"
@@ -2856,7 +2861,7 @@ export function ChatInterface({
                       🚀 Deep Investigation
                     </div>
                     <div className="text-[10px] sm:text-xs text-blue-600 dark:text-blue-400">
-                      Multi-source research + Trial data + Efficacy analysis
+                      Patent landscape + Competitive analysis + Trends
                     </div>
                   </motion.button>
                 </div>

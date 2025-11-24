@@ -25,24 +25,24 @@ export const metadata: Metadata = {
     process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3000"
   ),
   title: {
-    default: "Bio | By Valyu",
-    template: "%s | Bio | By Valyu",
+    default: "Patent Explorer | By Valyu",
+    template: "%s | Patent Explorer | By Valyu",
   },
   description:
-    "Enterprise-grade biomedical research AI with access to PubMed, clinical trials, FDA drug labels, secure Python execution, and interactive visualizations for comprehensive research.",
-  applicationName: "Bio | By Valyu",
+    "AI-powered patent search and innovation trends assistant with access to real USPTO patent data via Valyu API. Search patents, analyze trends, and explore innovation landscapes with accurate patent numbers (no hallucinations).",
+  applicationName: "Patent Explorer | By Valyu",
   openGraph: {
-    title: "Bio | By Valyu",
+    title: "Patent Explorer | By Valyu",
     description:
-      "Access PubMed articles, clinical trials, FDA drug labels, and more. AI-powered biomedical research with secure Python execution and interactive visualizations.",
+      "Search USPTO patents, analyze innovation trends, and explore technology landscapes. AI-powered patent research with real patent data via Valyu API - no hallucinated patent numbers.",
     url: "/",
-    siteName: "Bio | By Valyu",
+    siteName: "Patent Explorer | By Valyu",
     images: [
       {
         url: "/valyu.png",
         width: 1200,
         height: 630,
-        alt: "Bio | By Valyu",
+        alt: "Patent Explorer | By Valyu",
       },
     ],
     locale: "en_US",
@@ -50,9 +50,9 @@ export const metadata: Metadata = {
   },
   twitter: {
     card: "summary_large_image",
-    title: "Bio | By Valyu",
+    title: "Patent Explorer | By Valyu",
     description:
-      "AI-powered biomedical research. Access PubMed, clinical trials, FDA drug labels. Secure Python execution in Daytona sandboxes for statistical analysis and visualizations.",
+      "AI-powered patent search with real USPTO data via Valyu API. Search patents, analyze trends, visualize innovation landscapes. No hallucinated patent numbers.",
     images: ["/valyu.png"],
   },
   icons: {
@@ -65,8 +65,8 @@ export default function RootLayout({
 }: Readonly<{
   children: React.ReactNode;
 }>) {
-  // Log environment status on server-side render
-  if (typeof window === 'undefined') {
+  // Log environment status on server-side render (skip in development mode)
+  if (typeof window === 'undefined' && process.env.NEXT_PUBLIC_APP_MODE !== 'development') {
     logEnvironmentStatus();
   }
   

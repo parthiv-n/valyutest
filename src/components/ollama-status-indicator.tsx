@@ -177,7 +177,7 @@ export function OllamaStatusIndicator({ hasMessages = false }: { hasMessages?: b
                     </div>
                     <div>
                       <h2 className='text-sm font-medium text-gray-900 dark:text-gray-100'>
-                        Run Bio with Your Local Models
+                        Run Patent Explorer with Your Local Models
                       </h2>
                       <p className='text-xs text-gray-500 dark:text-gray-400 mt-0.5'>
                         Use Ollama for privacy and unlimited queries

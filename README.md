@@ -1,46 +1,50 @@
-# Bio
+# Patent Explorer
 
-> **Enterprise-grade biomedical research behind a chat interface** - Access PubMed, clinical trials, FDA drug labels, and run complex Python analyses through natural language. Powered by specialized biomedical data APIs.
+> **AI-powered patent search and innovation trends assistant** - Search USPTO patents, analyze innovation trends, and explore technology landscapes through natural language. Powered by Valyu's patent data API with real patent numbers (no hallucinations).
 
-🚀 **[Try the live demo](https://bio.valyu.ai)**
+🚀 **[Try the live demo](https://patent-explorer.valyu.ai)** (or fork and deploy your own)
 
-![Bio](public/valyu.png)
+![Patent Explorer](public/valyu.png)
 
-## Why Bio?
+## Why Patent Explorer?
 
-Traditional biomedical research is fragmented across dozens of databases and platforms. Bio changes everything by providing:
+LLMs hallucinate patent numbers all the time - retrieval fixes this critical issue. Patent Explorer provides:
 
-- **🔬 Comprehensive Medical Data** - PubMed articles, ClinicalTrials.gov data, FDA drug labels, and more
-- **🔍 One Unified Search** - Powered by Valyu's specialized biomedical data API
-- **🐍 Advanced Analytics** - Execute Python code in secure Daytona sandboxes for statistical analysis, pharmacokinetic modeling, and custom calculations
-- **📊 Interactive Visualizations** - Beautiful charts and dashboards for clinical data
-- **🌐 Real-Time Intelligence** - Web search integration for breaking medical news
+- **🔍 Real Patent Data** - Access to USPTO patents via Valyu API with actual patent numbers, titles, abstracts, filing dates, inventors, and assignees
+- **🚫 No Hallucinations** - Only uses real patent numbers from search results, never invents them
+- **📊 Innovation Trends** - Analyze patent filing trends, technology evolution, and competitive landscapes
+- **🐍 Advanced Analytics** - Execute Python code in secure Daytona sandboxes for patent data analysis and trend calculations
+- **📈 Interactive Visualizations** - Beautiful charts and dashboards for patent trends, technology landscapes, and innovation matrices
+- **🌐 Market Context** - Web search integration for patent news, litigation, and technology trends
 - **🏠 Local AI Models** - Run with Ollama or LM Studio for unlimited, private queries using your own hardware
-- **🎯 Natural Language** - Just ask questions like you would to a colleague
+- **🎯 Natural Language** - Just ask questions like "Show me key patents related to solid-state battery manufacturing"
 
 ## Key Features
 
-### 🔥 Powerful Biomedical Tools
+### 🔥 Powerful Patent Tools
 
-- **PubMed & ArXiv Search** - Access to millions of scientific papers and biomedical research
-- **Clinical Trials Database** - Search ClinicalTrials.gov for active and completed trials
-- **FDA Drug Labels** - Access comprehensive drug information from DailyMed
-- **Drug Information** - Detailed medication data, warnings, and contraindications
-- **Interactive Charts** - Visualize clinical data, drug efficacy, patient outcomes
-- **Python Code Execution** - Run pharmacokinetic calculations, statistical analyses, and ML models
+- **USPTO Patent Search** - Search patents by technology, inventor, assignee, claims, or patent number
+- **Patent Analysis** - Deep dive into specific patents including citations, patent families, and related patents
+- **Analytical Reports** - Professional findings reports with executive summaries, strategic insights, and comparative analysis (not raw data dumps)
+- **Innovation Trends** - Analyze patent filing trends over time, technology evolution, and competitive intelligence
+- **Interactive Charts** - Visualize patent trends, technology landscapes, assignee portfolios, and innovation matrices
+- **Python Code Execution** - Run patent data analysis, trend calculations, and statistical computations
+- **CSV Export** - Download patent data tables for further analysis
 
 ### 🛠️ Advanced Tool Calling
 
-- **Python Code Execution** - Run complex biomedical calculations, statistical tests, and data analysis
-- **Interactive Charts** - Create publication-ready visualizations of clinical data
-- **Multi-Source Research** - Automatically aggregates data from multiple biomedical sources
+- **Patent Search** - Search USPTO patents with real patent numbers via Valyu API
+- **Patent Analysis** - Comprehensive patent research including citations and patent families
+- **Python Code Execution** - Run complex patent data analysis, trend calculations, and statistical tests
+- **Interactive Charts** - Create publication-ready visualizations of patent trends and innovation landscapes
+- **Web Search** - Find patent news, litigation information, and market context
 - **Export & Share** - Download results, share analyses, and collaborate
 
 ## 🚀 Quick Start
 
 ### Two Modes: Production vs Development
 
-Bio supports two distinct operating modes:
+Patent Explorer supports two distinct operating modes:
 
 **🌐 Production Mode** (Default)
 - Uses Supabase for authentication and database
@@ -71,6 +75,7 @@ Bio supports two distinct operating modes:
 **For Development Mode (Recommended for getting started):**
 - Node.js 18+
 - npm or yarn
+- Vercel AI Gateway API key (get one at [vercel.com/dashboard](https://vercel.com/dashboard) → AI Gateway → API Keys)
 - Valyu API key (get one at [platform.valyu.ai](https://platform.valyu.ai))
 - Daytona API key (for code execution)
 - [Ollama](https://ollama.com) or [LM Studio](https://lmstudio.ai) installed (optional but recommended)
@@ -82,6 +87,8 @@ Bio supports two distinct operating modes:
    git clone https://github.com/yorkeccak/bio.git
    cd bio
    ```
+   
+   **Note**: The repository name is still "bio" (legacy from the original biomedical chatbot), but the app is now "Patent Explorer".
 
 2. **Install dependencies**
    ```bash
@@ -97,6 +104,10 @@ Bio supports two distinct operating modes:
    # Enable Development Mode (No Supabase, No Auth, No Billing)
    NEXT_PUBLIC_APP_MODE=development
 
+   # Vercel AI Gateway Configuration (Required)
+   # Get your API key at: https://vercel.com/dashboard → AI Gateway → API Keys
+   AI_GATEWAY_API_KEY=your-vercel-ai-gateway-api-key
+
    # Valyu API Configuration (Required)
    VALYU_API_KEY=your-valyu-api-key
 
@@ -109,13 +120,17 @@ Bio supports two distinct operating modes:
    OLLAMA_BASE_URL=http://localhost:11434   # Default Ollama URL
    LMSTUDIO_BASE_URL=http://localhost:1234  # Default LM Studio URL
 
-   # OpenAI Configuration (Optional - fallback if local models unavailable)
+   # OpenAI Configuration (Optional - fallback if Vercel AI Gateway unavailable)
    OPENAI_API_KEY=your-openai-api-key
    ```
 
    **For Production Mode:**
    ```env
-   # OpenAI Configuration (Required)
+   # Vercel AI Gateway Configuration (Required)
+   # Get your API key at: https://vercel.com/dashboard → AI Gateway → API Keys
+   AI_GATEWAY_API_KEY=your-vercel-ai-gateway-api-key
+
+   # OpenAI Configuration (Optional - fallback if Vercel AI Gateway unavailable)
    OPENAI_API_KEY=your-openai-api-key
 
    # Valyu API Configuration (Required)
@@ -137,12 +152,24 @@ Bio supports two distinct operating modes:
    NEXT_PUBLIC_APP_URL=http://localhost:3000
    ```
 
-4. **Run the development server**
+4. **Get your Vercel AI Gateway API Key** (Required)
+
+   This app uses Vercel AI SDK with Vercel AI Gateway for LLM access. To get your API key:
+
+   1. Go to [Vercel Dashboard](https://vercel.com/dashboard)
+   2. Navigate to the **"AI Gateway"** tab
+   3. Click **"API Keys"** in the sidebar
+   4. Click **"Create Key"** to generate a new API key
+   5. Copy the key and add it to your `.env.local` file as `AI_GATEWAY_API_KEY`
+
+   **Note**: The API key will only be shown once, so make sure to save it securely.
+
+5. **Run the development server**
    ```bash
    npm run dev
    ```
 
-5. **Open your browser**
+6. **Open your browser**
 
    Navigate to [http://localhost:3000](http://localhost:3000)
 
@@ -191,7 +218,7 @@ When `NEXT_PUBLIC_APP_MODE=development`:
 
 Bio supports both **Ollama** and **LM Studio** for running local LLMs. Both are free, private, and work offline - choose based on your preference.
 
-**💡 You can use both!** Bio detects both automatically and lets you switch between them with a provider selector in the UI.
+**💡 You can use both!** Patent Explorer detects both automatically and lets you switch between them with a provider selector in the UI.
 
 ### Setting Up Ollama
 
@@ -208,9 +235,9 @@ Ollama provides unlimited, private LLM inference on your local machine - complet
    - Open Ollama app and browse available models
    - Download `qwen2.5:7b` (recommended - best for biomedical research with tool support)
    - Or choose from: `llama3.1`, `mistral`, `deepseek-r1`
-   - That's it! Bio will automatically detect and use it
+   - That's it! Patent Explorer will automatically detect and use it
 
-3. **Use in Bio**
+3. **Use in Patent Explorer**
    - Start the app in development mode
    - Ollama status indicator appears in top-right corner
    - Shows your available models
@@ -238,9 +265,9 @@ ollama pull deepseek-r1:7b      # For reasoning/thinking mode
 ```
 
 **💡 It Just Works:**
-- Bio automatically detects Ollama when it's running
+- Patent Explorer automatically detects Ollama when it's running
 - No configuration needed
-- Automatically falls back to OpenAI if Ollama is unavailable
+- Automatically falls back to OpenAI/Vercel AI Gateway if Ollama is unavailable
 - Switch between models anytime via the local models popup
 
 ### Setting Up LM Studio (Alternative)
@@ -271,7 +298,7 @@ LM Studio provides a beautiful GUI for running local LLMs - perfect if you prefe
    ![LM Studio Start Server](public/lmstudio-start.png)
 
    - Server starts immediately - you'll see the status change to "Running"
-   - That's it! Bio will automatically detect it
+   - That's it! Patent Explorer will automatically detect it
 
 4. **Important: Configure Context Window**
    - ⚠️ **CRITICAL**: This app uses extensive tool descriptions that require adequate context length
@@ -282,7 +309,7 @@ LM Studio provides a beautiful GUI for running local LLMs - perfect if you prefe
    - Without sufficient context length, you'll get errors when the AI tries to use tools
    - This applies to all models in LM Studio - configure each model individually
 
-5. **Use in Bio**
+5. **Use in Patent Explorer**
    - Start the app in development mode
    - Local models indicator appears in top-right corner
    - If both Ollama and LM Studio are running, you'll see a provider switcher
@@ -305,7 +332,7 @@ LM Studio provides a beautiful GUI for running local LLMs - perfect if you prefe
 
 ### Switching Between Providers
 
-If you have both Ollama and LM Studio running, Bio automatically detects both and shows a beautiful provider switcher in the local models popup:
+If you have both Ollama and LM Studio running, Patent Explorer automatically detects both and shows a beautiful provider switcher in the local models popup:
 
 - **Visual Selection**: Click provider buttons with logos
 - **Seamless Switching**: Switch between providers without reloading
@@ -333,6 +360,18 @@ Not all models support all features. Here's what works:
 - You'll see a friendly dialog explaining limitations
 - Can continue with text-only responses
 - Or switch to a different model that supports tools
+
+## 📊 Analytical Reports & Insights
+
+Patent Explorer generates **professional analytical reports** rather than raw data dumps:
+
+- **Executive Summary** - High-level insights and key findings
+- **Strategic Analysis** - Market trends, competitive positioning, innovation patterns
+- **Comparative Analysis** - How different approaches compare
+- **Key Takeaways** - Actionable intelligence and recommendations
+- **Grouped by Themes** - Patents organized by innovation approach, not just listed
+
+The AI synthesizes patent data into strategic intelligence, focusing on "what this means" rather than "what this is".
 
 ### Development Mode Features
 
@@ -403,7 +442,7 @@ cp -r .local-data/ .local-data-backup/
 - **LM Studio**: Click LM Studio menu bar icon → "Start Server on Port 1234..."
   - Check LM Studio URL in `.env.local` (default: `http://localhost:1234`)
   - Verify at least one model is downloaded in LM Studio
-  - Server must be running for Bio to detect it
+  - Server must be running for Patent Explorer to detect it
 
 **Database errors:**
 - Delete and recreate: `rm -rf .local-data/`
@@ -416,13 +455,13 @@ cp -r .local-data/ .local-data-backup/
 
 ## Production Deployment Guide
 
-This guide walks you through setting up Bio for production with full authentication, billing, and database functionality.
+This guide walks you through setting up Patent Explorer for production with full authentication, billing, and database functionality.
 
 ### 1. Get API Keys
 
 #### Valyu API (Required)
 
-Valyu provides specialized biomedical data - PubMed articles, clinical trials, FDA drug labels, and more. Without this API key, the app cannot access biomedical data.
+Valyu provides USPTO patent data - real patent numbers, titles, abstracts, filing dates, inventors, and assignees. Without this API key, the app cannot access patent data.
 
 1. Go to [platform.valyu.ai](https://platform.valyu.ai)
 2. Sign up for an account
@@ -430,9 +469,19 @@ Valyu provides specialized biomedical data - PubMed articles, clinical trials, F
 4. Create a new API key
 5. Copy your API key (starts with `valyu_`)
 
-#### OpenAI API (Required)
+#### Vercel AI Gateway API Key (Required)
 
-Used for AI chat responses, natural language understanding, and function calling.
+Used for LLM access via Vercel AI Gateway. This is required for the chat functionality.
+
+1. Go to [vercel.com/dashboard](https://vercel.com/dashboard)
+2. Navigate to **"AI Gateway"** tab
+3. Click **"API Keys"** in the sidebar
+4. Click **"Create Key"** to generate a new API key
+5. Copy the key (starts with `vg_`)
+
+#### OpenAI API (Optional - Fallback)
+
+Used as fallback if Vercel AI Gateway is unavailable. Can also be used directly instead of Vercel AI Gateway.
 
 1. Go to [platform.openai.com](https://platform.openai.com)
 2. Create an account or sign in
@@ -516,12 +565,16 @@ Create `.env.local` in your project root:
 NEXT_PUBLIC_APP_MODE=production
 NEXT_PUBLIC_APP_URL=https://yourdomain.com
 
-# Valyu API (Required - powers all biomedical data)
+# Vercel AI Gateway Configuration (Required)
+# Get your API key at: https://vercel.com/dashboard → AI Gateway → API Keys
+AI_GATEWAY_API_KEY=vg_xxxxxxxxxxxxxxxxxxxxxxxxxxxxx
+
+# OpenAI Configuration (Optional - fallback if Vercel AI Gateway unavailable)
+OPENAI_API_KEY=sk-xxxxxxxxxxxxxxxxxxxxxxxxxxxxx
+
+# Valyu API (Required - powers all patent data)
 # Get yours at: https://platform.valyu.ai
 VALYU_API_KEY=valyu_xxxxxxxxxxxxxxxxxxxxxxxxxxxxx
-
-# OpenAI Configuration
-OPENAI_API_KEY=sk-xxxxxxxxxxxxxxxxxxxxxxxxxxxxx
 
 # Daytona Configuration (Code Execution)
 DAYTONA_API_KEY=your-daytona-api-key
@@ -572,10 +625,11 @@ POLAR_UNLIMITED_PRODUCT_ID=prod_xxxxxxxxxxxxxxxxxxxxx
    - Check Supabase users table for `subscription_tier` update
    - Check Polar dashboard for webhook delivery
 
-3. **Test Biomedical Data:**
-   - Ask a question like "What are recent clinical trials for melanoma?"
-   - Verify Valyu API is returning data
+3. **Test Patent Data:**
+   - Ask a question like "Show me key patents related to solid-state battery manufacturing"
+   - Verify Valyu API is returning patent data
    - Check that charts and CSVs are saving to database
+   - Verify the response is an analytical report, not raw data
 
 ### 7. Troubleshooting
 
@@ -594,10 +648,11 @@ POLAR_UNLIMITED_PRODUCT_ID=prod_xxxxxxxxxxxxxxxxxxxxx
 - Check Polar dashboard for webhook delivery status
 - Review app logs for webhook processing errors
 
-**No Biomedical Data:**
+**No Patent Data:**
 - Verify Valyu API key is set correctly in environment variables
 - Check Valyu dashboard for API usage/errors
 - Test API key with a curl request to Valyu
+- Verify you're using the correct source: `valyu/valyu-uspto`
 
 **Rate Limiting:**
 - Check `user_rate_limits` table in Supabase
@@ -639,38 +694,47 @@ POLAR_UNLIMITED_PRODUCT_ID=prod_xxxxxxxxxxxxxxxxxxxxx
 
 ## 💡 Example Queries
 
-Try these powerful queries to see what Bio can do:
+Try these powerful queries to see what Patent Explorer can do:
 
-- "What are the latest clinical trials for CAR-T therapy in melanoma?"
-- "Find recent PubMed papers on CRISPR gene editing safety"
-- "Calculate the half-life of warfarin based on these concentrations"
-- "Search for drug interactions between metformin and lisinopril"
-- "Analyze Phase 3 clinical trial data for immunotherapy drugs"
-- "Create a chart comparing efficacy rates of different COVID-19 vaccines"
+- "Show me key patents related to solid-state battery manufacturing"
+- "Find patents by Tesla in autonomous driving technology"
+- "Analyze patent trends in CRISPR technology over the past 10 years"
+- "What are the top assignees for quantum computing patents?"
+- "Show me patents related to AI chip architecture"
+- "Create a chart showing patent filing trends for electric vehicle batteries"
+- "What are recent innovations in brain implantable devices?"
+- "Compare different approaches to neural signal processing in patents"
+
+**What to Expect:**
+- **Analytical Reports** - Not raw data dumps, but strategic insights and analysis
+- **Grouped by Themes** - Patents organized by innovation approach
+- **Comparative Analysis** - How different approaches compare
+- **Strategic Insights** - Market trends, gaps, and opportunities
 
 **With Local Models (Ollama/LM Studio):**
 - Run unlimited queries without API costs
-- Keep all your medical research completely private
-- Perfect for sensitive patient data analysis
+- Keep all your patent research completely private
+- Perfect for sensitive competitive intelligence
 - Choose your preferred interface: terminal (Ollama) or GUI (LM Studio)
 
 ## 🏗️ Architecture
 
 - **Frontend**: Next.js 15 with App Router, Tailwind CSS, shadcn/ui
-- **AI**: OpenAI GPT-5 with function calling + Ollama/LM Studio for local models
-- **Data**: Valyu API for comprehensive biomedical data
+- **AI**: Vercel AI SDK with Vercel AI Gateway (required) + OpenAI GPT-5 + Ollama/LM Studio for local models
+- **Data**: Valyu API for USPTO patent data (real patent numbers, no hallucinations)
 - **Code Execution**: Daytona sandboxes for secure Python execution
 - **Visualizations**: Recharts for interactive charts
 - **Real-time**: Streaming responses with Vercel AI SDK
 - **Local Models**: Ollama and LM Studio integration for private, unlimited queries
+- **Analytics**: Analytical report generation with strategic insights and synthesis
 
 ## 🔒 Security
 
 - Secure API key management
 - Sandboxed code execution via Daytona
-- No storage of sensitive medical data
+- No storage of sensitive patent data
 - HTTPS encryption for all API calls
-- HIPAA-compliant architecture (when self-hosted)
+- Privacy-focused architecture (when self-hosted)
 
 ## 📝 License
 
@@ -682,14 +746,51 @@ Contributions are welcome! Please feel free to submit a Pull Request.
 
 ## 🙏 Acknowledgments
 
-- Built with [Valyu](https://platform.valyu.ai) - The unified biomedical data API
+- Built with [Valyu](https://platform.valyu.ai) - Patent data API (no hallucinated patent numbers!)
+- Powered by [Vercel AI SDK](https://sdk.vercel.ai) - Chat experience and streaming
 - Powered by [Daytona](https://daytona.io) - Secure code execution
 - UI components from [shadcn/ui](https://ui.shadcn.com)
 
 ---
 
+## Shortcuts & Assumptions
+
+**Shortcuts Made:**
+- Kept existing database schema (generic, works for patents)
+- Kept authentication/rate limiting system (can simplify for demo)
+- Reused chart/CSV rendering components (generic, work for any data)
+- Kept code execution tool (useful for patent analysis)
+- Used development mode for demo (no Supabase needed)
+
+**Assumptions:**
+- Valyu has patent source: `"valyu/valyu-uspto"` (verify exact name with Valyu docs)
+- Patent data structure from Valyu includes: number, title, abstract, claims, dates, inventors, assignees
+- Can use development mode for demo (no Supabase needed)
+- Focus on USPTO patents (US market) - can expand to other jurisdictions later
+
+**What to Verify:**
+- Exact Valyu source identifier for patents (check Valyu documentation)
+- Patent data fields returned by Valyu API
+- Whether Valyu supports patent citation analysis
+
+---
+
+## Domain Choice: Why Patents?
+
+**Patents** was chosen as the domain because:
+
+1. **Valyu's Strength** - Valyu explicitly markets patent datasets as a core strength
+2. **Hallucination Problem** - LLMs frequently hallucinate patent numbers - retrieval fixes this critical issue
+3. **High Value Use Case** - Researchers, inventors, IP lawyers, and startups need accurate patent data
+4. **Clear Differentiation** - Different from the biomedical example, showcases Valyu's versatility
+5. **Engaging Demo** - Users can explore innovation trends, competitive landscapes, and technology evolution
+
+**Demo Query:** "Show me key patents related to solid-state battery manufacturing"
+
+---
+
 <p align="center">
-  Made with ❤️ for biomedical researchers
+  Made with ❤️ for patent researchers and innovators
 </p>
 
 <p align="center">
