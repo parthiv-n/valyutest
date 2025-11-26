@@ -65,14 +65,7 @@ Switch between modes using the toggle in the sidebar or prompt bar to see the di
 
 Patent Explorer supports two distinct operating modes:
 
-**🌐 Production Mode** (Default)
-- Uses Supabase for authentication and database
-- OpenAI/Vercel AI Gateway for LLM
-- Rate limiting (5 queries/day for free tier)
-- Billing and usage tracking via Polar
-- Full authentication required
-
-**💻 Development Mode** (Recommended for Local Development)
+**💻 Development Mode** (default)
 - **No Supabase required** - Uses local SQLite database
 - **No authentication needed** - Auto-login as dev user
 - **Unlimited queries** - No rate limits
@@ -141,34 +134,6 @@ Patent Explorer supports two distinct operating modes:
 
    # OpenAI Configuration (Optional - fallback if Vercel AI Gateway unavailable)
    OPENAI_API_KEY=your-openai-api-key
-   ```
-
-   **For Production Mode:**
-   ```env
-   # Vercel AI Gateway Configuration (Required)
-   # Get your API key at: https://vercel.com/dashboard → AI Gateway → API Keys
-   AI_GATEWAY_API_KEY=your-vercel-ai-gateway-api-key
-
-   # OpenAI Configuration (Optional - fallback if Vercel AI Gateway unavailable)
-   OPENAI_API_KEY=your-openai-api-key
-
-   # Valyu API Configuration (Required)
-   VALYU_API_KEY=your-valyu-api-key
-
-   # Daytona Configuration (Required)
-   DAYTONA_API_KEY=your-daytona-api-key
-
-   # Supabase Configuration (Required)
-   NEXT_PUBLIC_SUPABASE_URL=your-supabase-url
-   NEXT_PUBLIC_SUPABASE_ANON_KEY=your-supabase-anon-key
-   SUPABASE_SERVICE_ROLE_KEY=your-service-role-key
-
-   # Polar Billing (Required)
-   POLAR_WEBHOOK_SECRET=your-polar-webhook-secret
-   POLAR_UNLIMITED_PRODUCT_ID=your-product-id
-
-   # App Configuration
-   NEXT_PUBLIC_APP_URL=http://localhost:3000
    ```
 
 4. **Get your Vercel AI Gateway API Key** (Required)
