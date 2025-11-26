@@ -30,6 +30,25 @@ LLMs hallucinate patent numbers all the time - retrieval fixes this critical iss
 - **Interactive Charts** - Visualize patent trends, technology landscapes, assignee portfolios, and innovation matrices
 - **Python Code Execution** - Run patent data analysis, trend calculations, and statistical computations
 - **CSV Export** - Download patent data tables for further analysis
+- **Dual Mode System** - Switch between Valyu + LLM mode (with real patent data) and LLM-only mode (for comparison)
+
+### 🎛️ Dual Mode System
+
+Patent Explorer offers two distinct modes:
+
+**Valyu + LLM Mode** (Default)
+- Uses Valyu API to retrieve real USPTO patent data
+- Generates structured findings reports with citations
+- Includes strategic analysis and comparative insights
+- All tools available (patent search, analysis, charts, code execution)
+
+**LLM-Only Mode**
+- Pure LLM responses without external data retrieval
+- Minimal formatting - natural conversational responses
+- No tools - direct LLM wrapper
+- Useful for comparing responses with and without real data
+
+Switch between modes using the toggle in the sidebar or prompt bar to see the difference between retrieval-augmented generation and pure LLM responses.
 
 ### 🛠️ Advanced Tool Calling
 
@@ -216,7 +235,7 @@ When `NEXT_PUBLIC_APP_MODE=development`:
 
 ### Choosing Between Ollama and LM Studio
 
-Bio supports both **Ollama** and **LM Studio** for running local LLMs. Both are free, private, and work offline - choose based on your preference.
+Patent Explorer supports both **Ollama** and **LM Studio** for running local LLMs. Both are free, private, and work offline - choose based on your preference.
 
 **💡 You can use both!** Patent Explorer detects both automatically and lets you switch between them with a provider selector in the UI.
 
@@ -233,8 +252,8 @@ Ollama provides unlimited, private LLM inference on your local machine - complet
 
 2. **Download a Model**
    - Open Ollama app and browse available models
-   - Download `qwen2.5:7b` (recommended - best for biomedical research with tool support)
-   - Or choose from: `llama3.1`, `mistral`, `deepseek-r1`
+   - Download `qwen2.5:7b` (recommended - excellent tool support for patent research)
+   - Or choose from: `llama3.1`, `mistral`, `deepseek-r1`, `qwen3`
    - That's it! Patent Explorer will automatically detect and use it
 
 3. **Use in Patent Explorer**
@@ -258,10 +277,11 @@ curl -fsSL https://ollama.com/install.sh | sh  # Linux
 ollama serve
 
 # Download recommended models
-ollama pull qwen2.5:7b          # Recommended - excellent tool support
-ollama pull llama3.1:8b         # Alternative - good performance
-ollama pull mistral:7b          # Alternative - fast
-ollama pull deepseek-r1:7b      # For reasoning/thinking mode
+ollama pull qwen2.5:7b          # Recommended - excellent tool support for patent research
+ollama pull qwen3:7b            # Alternative - newer model with improved capabilities
+ollama pull llama3.1:8b         # Alternative - good performance and tool support
+ollama pull mistral:7b          # Alternative - fast inference
+ollama pull deepseek-r1:7b      # For reasoning/thinking mode - shows step-by-step analysis
 ```
 
 **💡 It Just Works:**
@@ -345,15 +365,15 @@ The provider switcher appears automatically when multiple providers are detected
 
 Not all models support all features. Here's what works:
 
-**Tool Calling Support** (Execute Python, search databases, create charts):
+**Tool Calling Support** (Execute Python, search patents, create charts):
 - ✅ qwen2.5, qwen3, deepseek-r1, deepseek-v3
 - ✅ llama3.1, llama3.2, llama3.3
 - ✅ mistral, mistral-nemo, mistral-small
 - ✅ See full list in Ollama popup (wrench icon)
 
 **Thinking/Reasoning Support** (Show reasoning steps):
-- ✅ deepseek-r1, qwen3, magistral
-- ✅ gpt-oss, cogito
+- ✅ deepseek-r1, deepseek-v3, qwen3
+- ✅ gpt-oss, cogito, magistral
 - ✅ See full list in Ollama popup (brain icon)
 
 **What happens if model lacks tool support?**
@@ -702,8 +722,8 @@ Try these powerful queries to see what Patent Explorer can do:
 - "What are the top assignees for quantum computing patents?"
 - "Show me patents related to AI chip architecture"
 - "Create a chart showing patent filing trends for electric vehicle batteries"
-- "What are recent innovations in brain implantable devices?"
-- "Compare different approaches to neural signal processing in patents"
+- "What are recent innovations in solid-state battery technology?"
+- "Compare different approaches to autonomous driving sensors across leading companies"
 
 **What to Expect:**
 - **Analytical Reports** - Not raw data dumps, but strategic insights and analysis
@@ -719,14 +739,16 @@ Try these powerful queries to see what Patent Explorer can do:
 
 ## 🏗️ Architecture
 
-- **Frontend**: Next.js 15 with App Router, Tailwind CSS, shadcn/ui
-- **AI**: Vercel AI SDK with Vercel AI Gateway (required) + OpenAI GPT-5 + Ollama/LM Studio for local models
-- **Data**: Valyu API for USPTO patent data (real patent numbers, no hallucinations)
+- **Frontend**: Next.js 15 with App Router, React 19, Tailwind CSS, shadcn/ui
+- **AI Framework**: Vercel AI SDK v5 with streaming, tool calling, and message management
+- **LLM Access**: Vercel AI Gateway (required) + OpenAI GPT-5 + Ollama/LM Studio for local models
+- **Data Retrieval**: Valyu API for USPTO patent data (real patent numbers, no hallucinations)
 - **Code Execution**: Daytona sandboxes for secure Python execution
 - **Visualizations**: Recharts for interactive charts
-- **Real-time**: Streaming responses with Vercel AI SDK
+- **Real-time**: Streaming responses with incremental token rendering
 - **Local Models**: Ollama and LM Studio integration for private, unlimited queries
 - **Analytics**: Analytical report generation with strategic insights and synthesis
+- **Database**: Supabase (production) or SQLite (development) for chat persistence
 
 ## 🔒 Security
 
@@ -747,9 +769,36 @@ Contributions are welcome! Please feel free to submit a Pull Request.
 ## 🙏 Acknowledgments
 
 - Built with [Valyu](https://platform.valyu.ai) - Patent data API (no hallucinated patent numbers!)
-- Powered by [Vercel AI SDK](https://sdk.vercel.ai) - Chat experience and streaming
+- Powered by [Vercel AI SDK](https://sdk.vercel.ai) - Chat experience, streaming, and tool calling
 - Powered by [Daytona](https://daytona.io) - Secure code execution
 - UI components from [shadcn/ui](https://ui.shadcn.com)
+
+## 🔧 How It Works: Vercel AI SDK Integration
+
+Patent Explorer leverages the Vercel AI SDK for a complete AI chat experience:
+
+### Backend (`/api/chat/route.ts`)
+- Uses `streamText()` to generate streaming responses
+- Integrates tool calling for patent search, analysis, and code execution
+- Supports multiple LLM providers (OpenAI, Ollama, LM Studio) via provider abstraction
+- Handles message persistence and conversation state
+- Implements dual mode system (Valyu + LLM vs LLM-only) with conditional tool availability
+
+### Frontend (`chat-interface.tsx`)
+- Uses `useChat()` hook for message management and streaming
+- Custom `DefaultChatTransport` for request configuration
+- Automatic tool result handling with `sendAutomaticallyWhen`
+- Real-time UI updates as tokens stream in
+- Supports reasoning steps for compatible models
+
+### Key Features Enabled
+- **Streaming Responses**: Tokens appear in real-time as they're generated
+- **Tool Calling**: Model automatically decides when to use patent search, analysis, or code execution tools
+- **Multi-turn Conversations**: Full conversation history maintained automatically
+- **Message Persistence**: All conversations saved to database with tool calls and results
+- **Error Handling**: Graceful fallbacks and user-friendly error messages
+
+The SDK abstracts away the complexity of streaming, tool calling, and message management, allowing the app to focus on domain-specific logic (patent search, analysis, visualization).
 
 ---
 
