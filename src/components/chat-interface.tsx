@@ -66,6 +66,7 @@ import {
   Table,
   BarChart3,
   Check,
+  X,
 } from "lucide-react";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
@@ -88,12 +89,119 @@ import {
 } from "@/lib/markdown-utils";
 import { parseFirstLine } from "@/lib/text-utils";
 import { motion, AnimatePresence } from "framer-motion";
-import DataSourceLogos from "./data-source-logos";
 import SocialLinks from "./social-links";
 import { calculateMessageMetrics, MessageMetrics } from "@/lib/metrics-calculator";
 import { MetricsPills } from "@/components/metrics-pills";
+import { PATENT_COMPANIES, PATENT_TOPICS } from "@/data/patent-suggestion-data";
 
 // Debug toggles removed per request
+
+const DEFAULT_SUGGESTION_CARD_CLASS =
+  "h-full w-full bg-purple-200 dark:bg-purple-900/30 rounded-xl bg-clip-padding backdrop-filter backdrop-blur-xl bg-opacity-20 dark:bg-opacity-30 border border-gray-100 dark:border-purple-500/30 hover:bg-opacity-30 dark:hover:bg-opacity-40 hover:backdrop-blur-2xl hover:shadow-lg hover:shadow-blue-500/10 dark:hover:shadow-purple-500/20 p-2.5 sm:p-4 transition-all text-left group";
+
+const HIGHLIGHT_SUGGESTION_CARD_CLASS =
+  "bg-gradient-to-r from-blue-500/30 via-purple-500/20 to-pink-500/20 dark:from-blue-500/20 dark:via-purple-500/15 dark:to-pink-500/15 backdrop-blur-lg p-2.5 sm:p-4 rounded-xl border border-blue-300/50 dark:border-purple-400/50 hover:border-blue-400/70 dark:hover:border-purple-500/70 transition-all hover:from-blue-500/40 hover:via-purple-500/30 hover:to-pink-500/30 dark:hover:from-blue-500/30 dark:hover:via-purple-500/20 dark:hover:to-pink-500/20 hover:backdrop-blur-xl hover:shadow-xl hover:shadow-blue-500/20 dark:hover:shadow-purple-500/30 text-left group";
+
+type CompanyTemplate = (company: string) => string;
+type TechnologyTemplate = (topic: string) => string;
+
+type SuggestionVariant = "default" | "highlight";
+
+type SuggestionCardConfig = 
+  | {
+      id: string;
+      emoji: string;
+      title: string;
+      subtitle: string;
+      variant?: SuggestionVariant;
+      gridClass?: string;
+      type: "company";
+      template: CompanyTemplate;
+    }
+  | {
+      id: string;
+      emoji: string;
+      title: string;
+      subtitle: string;
+      variant?: SuggestionVariant;
+      gridClass?: string;
+      type: "technology";
+      template: TechnologyTemplate;
+    };
+
+interface SuggestionCard {
+  id: string;
+  emoji: string;
+  title: string;
+  subtitle: string;
+  variant: SuggestionVariant;
+  gridClass?: string;
+  prompt: string;
+  delay: number;
+  focus?: string; // For display: company name or topic
+}
+
+const COMPANY_FOCUSED_CONFIGS: SuggestionCardConfig[] = [
+  {
+    id: "company-search",
+    emoji: "🔍",
+    title: "Company Patent Search",
+    subtitle: "Recent filings & innovations",
+    type: "company",
+    template: (company) =>
+      `Show me the most recent patents from ${company}. Summarize the main claims, highlight notable inventors, and show filing trends over the past decade.`,
+  },
+  {
+    id: "company-analysis",
+    emoji: "🚗",
+    title: "Company Portfolio Analysis",
+    subtitle: "Patent strategy & innovations",
+    type: "company",
+    template: (company) =>
+      `Analyze ${company}'s patent portfolio. Identify key technology areas, compare with leading competitors, and highlight differentiating innovations.`,
+  },
+  {
+    id: "company-competitive",
+    emoji: "🏢",
+    title: "Competitive Intelligence",
+    subtitle: "Company positioning & portfolio",
+    type: "company",
+    template: (company) =>
+      `Which organizations compete with ${company}? Provide a competitive breakdown with portfolio strengths, citation activity, and standout patents.`,
+  },
+];
+
+const TECHNOLOGY_FOCUSED_CONFIGS: SuggestionCardConfig[] = [
+  {
+    id: "tech-trends",
+    emoji: "📈",
+    title: "Innovation Trends",
+    subtitle: "Patent trends & technology evolution",
+    type: "technology",
+    template: (topic) =>
+      `Track patent trends in ${topic}. Include filing velocity, key innovations, and emerging subthemes that R&D teams should watch.`,
+  },
+  {
+    id: "tech-comparative",
+    emoji: "🔬",
+    title: "Comparative Analysis",
+    subtitle: "Technology approaches & comparisons",
+    type: "technology",
+    template: (topic) =>
+      `Compare different approaches to ${topic} across leading assignees. Detail differences in architectures, materials, and performance claims from real patents.`,
+  },
+  {
+    id: "tech-deep-dive",
+    emoji: "🚀",
+    title: "Deep Investigation",
+    subtitle: "Patent landscape + competitive analysis + trends",
+    variant: "highlight",
+    gridClass: "col-span-2 sm:col-span-2 lg:col-span-1",
+    type: "technology",
+    template: (topic) =>
+      `Perform a full patent landscape on ${topic}. Include top assignees, deliver CSV-ready data, charts, and strategic whitespace insights for leadership.`,
+  },
+];
 
 // Professional BioMed Research UI - Workflow-inspired with checkmarks and clean cards
 const TimelineStep = memo(({
@@ -138,9 +246,9 @@ const TimelineStep = memo(({
       {/* Minimal, refined design */}
       <div
         className={`relative flex items-start gap-4 py-4 px-3 sm:px-4 -mx-1 sm:-mx-2 rounded-md transition-all duration-150 ${
-          isStreaming ? 'bg-blue-50/50 dark:bg-blue-950/10' : ''
+          isStreaming ? 'bg-blue-500/20 dark:bg-blue-500/10 backdrop-blur-sm' : ''
         } ${
-          hasContent ? 'hover:bg-gray-50 dark:hover:bg-white/[0.02] cursor-pointer' : ''
+          hasContent ? 'hover:bg-white/40 dark:hover:bg-gray-800/40 backdrop-blur-sm cursor-pointer' : ''
         }`}
         onClick={hasContent ? toggleExpand : undefined}
       >
@@ -199,7 +307,7 @@ const TimelineStep = memo(({
       {isExpanded && hasContent && (
         <div className="mt-1.5 ml-6 mr-2 animate-in fade-in duration-150">
           {children || (
-            <div className="text-sm leading-relaxed text-gray-700 dark:text-gray-300 bg-gray-50/50 dark:bg-white/[0.02] rounded-lg px-3 py-2.5 border-l-2 border-gray-200 dark:border-gray-800">
+            <div className="text-sm leading-relaxed text-gray-700 dark:text-gray-300 h-full w-full bg-purple-200 dark:bg-purple-900/30 bg-clip-padding backdrop-filter backdrop-blur-xl bg-opacity-20 dark:bg-opacity-30 rounded-lg px-3 py-2.5 border-l-2 border-gray-100 dark:border-purple-500/30">
               <ReactMarkdown remarkPlugins={[remarkGfm]} rehypePlugins={[rehypeRaw]}>
                 {part.text || ''}
               </ReactMarkdown>
@@ -235,7 +343,7 @@ const LiveReasoningPreview = memo(({ title, lines }: { title: string; lines: str
       transition={{ duration: 0.12, ease: 'easeOut' }}
       className="my-1 ml-3 sm:ml-8 mr-3 sm:mr-0"
     >
-      <div className="bg-blue-50/50 dark:bg-blue-950/20 border-l-2 border-blue-300 dark:border-blue-700 rounded-r px-2 sm:px-2.5 py-1.5 space-y-1 overflow-hidden max-w-full">
+      <div className="bg-blue-500/20 dark:bg-blue-500/15 backdrop-blur-md border-l-2 border-blue-400/50 dark:border-purple-400/50 rounded-r px-2 sm:px-2.5 py-1.5 space-y-1 overflow-hidden max-w-full">
         {/* Show the latest **title** */}
         {title && (
           <div className="text-xs font-semibold text-blue-700 dark:text-blue-300 truncate">
@@ -447,7 +555,7 @@ const MemoizedCodeExecutionResult = memo(function MemoizedCodeExecutionResult({
       {/* Output Section - elegant typography */}
       <div>
         <div className="text-xs font-semibold text-gray-600 dark:text-gray-400 mb-2 uppercase tracking-wide">Output</div>
-        <div className="prose prose-sm max-w-none dark:prose-invert text-sm p-4 bg-white dark:bg-gray-800/50 rounded-lg max-h-[400px] overflow-y-auto border border-gray-200 dark:border-gray-700/50">
+        <div className="prose prose-sm max-w-none dark:prose-invert text-sm p-4 h-full w-full bg-purple-200 dark:bg-purple-900/30 bg-clip-padding backdrop-filter backdrop-blur-xl bg-opacity-20 dark:bg-opacity-30 rounded-lg max-h-[400px] overflow-y-auto border border-gray-100 dark:border-purple-500/30">
           <MemoizedMarkdown text={escapeHtml(output)} />
         </div>
       </div>
@@ -700,25 +808,32 @@ const parseSpecialReferences = (text: string): Array<{ type: 'text' | 'csv' | 'c
 // Memoized Markdown renderer to avoid re-parsing on unrelated state updates
 const MemoizedMarkdown = memo(function MemoizedMarkdown({
   text,
+  useValyuMode = true,
 }: {
   text: string;
+  useValyuMode?: boolean;
 }) {
   const enableRawHtml = (text?.length || 0) < 20000;
 
-  // Parse special references (CSV/charts) - MUST be before any conditional returns
-  const specialSegments = useMemo(() => parseSpecialReferences(text), [text]);
-  const hasSpecialRefs = specialSegments.some(s => s.type === 'csv' || s.type === 'chart');
+  // In LLM-only mode, strip out chart/CSV references and just render text
+  const processedText = useMemo(() => {
+    if (!useValyuMode) {
+      // Remove chart and CSV markdown references
+      const textWithoutCharts = text.replace(/!\[([^\]]*)\]\((\/api\/charts\/[^\/]+\/image|csv:[a-f0-9-]+|\/api\/csvs\/[a-f0-9-]+)\)/gi, '');
+      return preprocessMarkdownText(cleanBiomedicalText(textWithoutCharts || ""));
+    }
+    return preprocessMarkdownText(cleanBiomedicalText(text || ""));
+  }, [text, useValyuMode]);
 
-  // Process text for regular markdown - MUST be before any conditional returns
-  const processed = useMemo(
-    () => {
-      const result = preprocessMarkdownText(cleanBiomedicalText(text || ""));
-      return result;
-    },
-    [text]
-  );
+  // Parse special references (CSV/charts) - ONLY in Valyu mode
+  const specialSegments = useMemo(() => {
+    if (!useValyuMode) return []; // Skip parsing in LLM-only mode
+    return parseSpecialReferences(text);
+  }, [text, useValyuMode]);
+  
+  const hasSpecialRefs = useValyuMode && specialSegments.some(s => s.type === 'csv' || s.type === 'chart');
 
-  // If we have CSV or chart references, render them separately to avoid nesting issues
+  // If we have CSV or chart references, render them separately (only in Valyu mode)
   if (hasSpecialRefs) {
     return (
       <>
@@ -748,6 +863,7 @@ const MemoizedMarkdown = memo(function MemoizedMarkdown({
     );
   }
 
+  // Render plain markdown (for both modes, but LLM-only mode has charts/CSVs stripped)
   return (
     <ReactMarkdown
       remarkPlugins={[remarkGfm]}
@@ -756,12 +872,12 @@ const MemoizedMarkdown = memo(function MemoizedMarkdown({
       skipHtml={!enableRawHtml}
       unwrapDisallowed={true}
     >
-      {processed}
+      {processedText}
     </ReactMarkdown>
   );
 }, (prevProps, nextProps) => {
-  // PERFORMANCE FIX: Only re-render if text actually changes
-  return prevProps.text === nextProps.text;
+  // PERFORMANCE FIX: Only re-render if text or useValyuMode actually changes
+  return prevProps.text === nextProps.text && prevProps.useValyuMode === nextProps.useValyuMode;
 });
 
 // THIS IS THE KEY OPTIMIZATION - prevents re-renders during streaming
@@ -773,12 +889,14 @@ const MemoizedTextPartWithCitations = memo(
     currentPartIndex,
     allMessages,
     currentMessageIndex,
+    useValyuMode = true,
   }: {
     text: string;
     messageParts: any[];
     currentPartIndex: number;
     allMessages?: any[];
     currentMessageIndex?: number;
+    useValyuMode?: boolean;
   }) {
     // Extract citations only when parts before this one change, not when text streams
     const citations = useMemo(() => {
@@ -925,20 +1043,21 @@ const MemoizedTextPartWithCitations = memo(
       return Object.keys(citations).length > 0;
     }, [citations]);
 
-    // Render with or without citations
-    if (hasCitations) {
+    // Render with or without citations (only in Valyu mode)
+    if (hasCitations && useValyuMode) {
       return <CitationTextRenderer text={text} citations={citations} />;
     } else {
-      return <MemoizedMarkdown text={text} />;
+      return <MemoizedMarkdown text={text} useValyuMode={useValyuMode} />;
     }
   },
   (prevProps, nextProps) => {
-    // Custom comparison: only re-render if text changed OR parts structure changed
+    // Custom comparison: only re-render if text changed OR parts structure changed OR useValyuMode changed
     // This prevents re-rendering on every token during streaming
     return (
       prevProps.text === nextProps.text &&
       prevProps.currentPartIndex === nextProps.currentPartIndex &&
-      prevProps.messageParts.length === nextProps.messageParts.length
+      prevProps.messageParts.length === nextProps.messageParts.length &&
+      prevProps.useValyuMode === nextProps.useValyuMode
     );
   }
 );
@@ -1031,7 +1150,7 @@ const SearchResultCard = ({
     return (
       <>
         <Card
-          className="cursor-pointer hover:shadow-md transition-shadow min-w-[240px] sm:min-w-[280px] max-w-[280px] sm:max-w-[320px] flex-shrink-0 py-2"
+          className="cursor-pointer h-full w-full bg-purple-200 dark:bg-purple-900/30 bg-clip-padding backdrop-filter backdrop-blur-xl bg-opacity-20 dark:bg-opacity-30 border border-gray-100 dark:border-purple-500/30 hover:bg-opacity-30 dark:hover:bg-opacity-40 hover:shadow-lg hover:shadow-blue-500/10 dark:hover:shadow-purple-500/20 transition-all min-w-[240px] sm:min-w-[280px] max-w-[280px] sm:max-w-[320px] flex-shrink-0 py-2"
           onClick={() => setIsDialogOpen(true)}
         >
           <CardContent className="h-full p-3">
@@ -1039,19 +1158,19 @@ const SearchResultCard = ({
               {/* Favicon on left */}
               <div className="flex-shrink-0 pt-0.5">
                 {type === "literature" ? (
-                  <div className="w-5 h-5 rounded bg-gray-100 dark:bg-gray-800 flex items-center justify-center overflow-hidden">
+                  <div className="w-5 h-5 rounded bg-white/60 dark:bg-gray-800/60 backdrop-blur-sm border border-blue-200/30 dark:border-purple-500/20 flex items-center justify-center overflow-hidden">
                     <BookOpen className="w-3.5 h-3.5 text-indigo-600 dark:text-indigo-400" />
                   </div>
                 ) : type === "drug" ? (
-                  <div className="w-5 h-5 rounded bg-gray-100 dark:bg-gray-800 flex items-center justify-center overflow-hidden">
+                  <div className="w-5 h-5 rounded bg-white/60 dark:bg-gray-800/60 backdrop-blur-sm border border-blue-200/30 dark:border-purple-500/20 flex items-center justify-center overflow-hidden">
                     <Search className="w-3.5 h-3.5 text-purple-600 dark:text-purple-400" />
                   </div>
                 ) : type === "clinical" ? (
-                  <div className="w-5 h-5 rounded bg-gray-100 dark:bg-gray-800 flex items-center justify-center overflow-hidden">
+                  <div className="w-5 h-5 rounded bg-white/60 dark:bg-gray-800/60 backdrop-blur-sm border border-blue-200/30 dark:border-purple-500/20 flex items-center justify-center overflow-hidden">
                     <Search className="w-3.5 h-3.5 text-blue-600 dark:text-blue-400" />
                   </div>
                 ) : (
-                  <div className="w-5 h-5 rounded bg-gray-100 dark:bg-gray-800 flex items-center justify-center overflow-hidden">
+                  <div className="w-5 h-5 rounded bg-white/60 dark:bg-gray-800/60 backdrop-blur-sm border border-blue-200/30 dark:border-purple-500/20 flex items-center justify-center overflow-hidden">
                     <Favicon
                       url={result.url}
                       size={12}
@@ -1126,19 +1245,19 @@ const SearchResultCard = ({
               {/* Favicon on left */}
               <div className="flex-shrink-0 pt-0.5">
                 {type === "literature" ? (
-                  <div className="w-5 h-5 rounded bg-gray-100 dark:bg-gray-800 flex items-center justify-center overflow-hidden">
+                  <div className="w-5 h-5 rounded bg-white/60 dark:bg-gray-800/60 backdrop-blur-sm border border-blue-200/30 dark:border-purple-500/20 flex items-center justify-center overflow-hidden">
                     <BookOpen className="w-3.5 h-3.5 text-indigo-600 dark:text-indigo-400" />
                   </div>
                 ) : type === "drug" ? (
-                  <div className="w-5 h-5 rounded bg-gray-100 dark:bg-gray-800 flex items-center justify-center overflow-hidden">
+                  <div className="w-5 h-5 rounded bg-white/60 dark:bg-gray-800/60 backdrop-blur-sm border border-blue-200/30 dark:border-purple-500/20 flex items-center justify-center overflow-hidden">
                     <Search className="w-3.5 h-3.5 text-purple-600 dark:text-purple-400" />
                   </div>
                 ) : type === "clinical" ? (
-                  <div className="w-5 h-5 rounded bg-gray-100 dark:bg-gray-800 flex items-center justify-center overflow-hidden">
+                  <div className="w-5 h-5 rounded bg-white/60 dark:bg-gray-800/60 backdrop-blur-sm border border-blue-200/30 dark:border-purple-500/20 flex items-center justify-center overflow-hidden">
                     <Search className="w-3.5 h-3.5 text-blue-600 dark:text-blue-400" />
                   </div>
                 ) : (
-                  <div className="w-5 h-5 rounded bg-gray-100 dark:bg-gray-800 flex items-center justify-center overflow-hidden">
+                  <div className="w-5 h-5 rounded bg-white/60 dark:bg-gray-800/60 backdrop-blur-sm border border-blue-200/30 dark:border-purple-500/20 flex items-center justify-center overflow-hidden">
                     <Favicon
                       url={result.url}
                       size={12}
@@ -1614,6 +1733,8 @@ export function ChatInterface({
   onSessionCreated,
   onNewChat,
   rateLimitProps,
+  useValyuMode,
+  onModeChange,
 }: {
   sessionId?: string;
   onMessagesChange?: (hasMessages: boolean) => void;
@@ -1626,6 +1747,8 @@ export function ChatInterface({
     resetTime?: Date;
     increment: () => Promise<any>;
   };
+  useValyuMode: boolean;
+  onModeChange: (mode: boolean) => void;
 }) {
   const [input, setInput] = useState("");
   const [editingMessageId, setEditingMessageId] = useState<string | null>(null);
@@ -1649,6 +1772,67 @@ export function ChatInterface({
   } | null>(null);
   const [pendingMessage, setPendingMessage] = useState<string | null>(null);
   const [liveProcessingTime, setLiveProcessingTime] = useState<number>(0);
+
+  const suggestionCards = useMemo<SuggestionCard[]>(() => {
+    const companyPool = [...PATENT_COMPANIES];
+    const topicPool = [...PATENT_TOPICS];
+
+    const pullRandom = (pool: string[], fallback: string[]) => {
+      if (pool.length === 0) {
+        const randomIndex = Math.floor(Math.random() * fallback.length);
+        return fallback[randomIndex];
+      }
+      const randomIndex = Math.floor(Math.random() * pool.length);
+      return pool.splice(randomIndex, 1)[0];
+    };
+
+    // Shuffle arrays for randomness
+    const shuffle = <T,>(array: T[]): T[] => {
+      const shuffled = [...array];
+      for (let i = shuffled.length - 1; i > 0; i--) {
+        const j = Math.floor(Math.random() * (i + 1));
+        [shuffled[i], shuffled[j]] = [shuffled[j], shuffled[i]];
+      }
+      return shuffled;
+    };
+
+    // Create 3 company-focused cards
+    const shuffledCompanyConfigs = shuffle(COMPANY_FOCUSED_CONFIGS);
+    const companyCards: SuggestionCard[] = shuffledCompanyConfigs.slice(0, 3).map((config, index) => {
+      const company = pullRandom(companyPool, PATENT_COMPANIES);
+      return {
+        id: config.id,
+        emoji: config.emoji,
+        title: config.title,
+        subtitle: config.subtitle,
+        variant: config.variant ?? "default",
+        gridClass: config.gridClass,
+        prompt: config.template(company),
+        delay: 0.3 + index * 0.1,
+        focus: company,
+      };
+    });
+
+    // Create 3 technology-focused cards
+    const shuffledTechConfigs = shuffle(TECHNOLOGY_FOCUSED_CONFIGS);
+    const techCards: SuggestionCard[] = shuffledTechConfigs.slice(0, 3).map((config, index) => {
+      const topic = pullRandom(topicPool, PATENT_TOPICS);
+      return {
+        id: config.id,
+        emoji: config.emoji,
+        title: config.title,
+        subtitle: config.subtitle,
+        variant: config.variant ?? "default",
+        gridClass: config.gridClass,
+        prompt: config.template(topic),
+        delay: 0.3 + (index + 3) * 0.1,
+        focus: topic,
+      };
+    });
+
+    // Combine and shuffle the final order
+    return shuffle([...companyCards, ...techCards]);
+  }, []);
 
   // Live reasoning preview - no longer needed as global state
   // Each reasoning component will handle its own preview based on streaming state
@@ -1859,11 +2043,12 @@ export function ChatInterface({
           body: {
             messages,
             sessionId: sessionIdRef.current,
+            useValyuMode,
           },
           headers,
         };
       }
-    }), [selectedModel, selectedProvider, user, increment]
+    }), [selectedModel, selectedProvider, user, increment, useValyuMode]
   );
 
   const {
@@ -1973,6 +2158,11 @@ export function ChatInterface({
       // The error occurs when stop() is called but there's no active stream
     }
   }, [stop]);
+
+  const handleModeToggle = useCallback(() => {
+    handleStop();
+    onModeChange(!useValyuMode);
+  }, [handleStop, onModeChange, useValyuMode]);
 
   // Initialize and handle sessionId prop changes
   useEffect(() => {
@@ -2647,6 +2837,7 @@ export function ChatInterface({
       .join("\n");
   };
 
+
   // Removed startNewChat function - using parent's handleNewChat via URL management
 
   const isLoading = status === "submitted" || status === "streaming";
@@ -2745,130 +2936,48 @@ export function ChatInterface({
                 </motion.div>
 
                 <div className="grid grid-cols-2 sm:grid-cols-2 lg:grid-cols-3 gap-2 sm:gap-3 px-2 sm:px-0">
-                  <motion.button
-                    onClick={() =>
-                      handlePromptClick(
-                        "Show me key patents related to solid-state battery manufacturing. Analyze the different approaches, identify the main assignees, and create a chart showing patent filing trends over the past 10 years."
-                      )
-                    }
-                    className="bg-gray-50 dark:bg-gray-800/50 p-2.5 sm:p-4 rounded-xl border border-gray-100 dark:border-gray-700 hover:border-gray-200 dark:hover:border-gray-600 transition-colors hover:bg-gray-100 dark:hover:bg-gray-800 text-left group"
-                    initial={{ opacity: 0, y: 20 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    transition={{ delay: 0.3, duration: 0.5 }}
-                    whileTap={{ scale: 0.98 }}
-                  >
-                    <div className="text-gray-700 dark:text-gray-300 mb-1.5 sm:mb-2 text-xs sm:text-sm font-medium group-hover:text-gray-900 dark:group-hover:text-gray-100">
-                      🔋 Patent Search
-                    </div>
-                    <div className="text-[10px] sm:text-xs text-gray-500 dark:text-gray-400">
-                      Technology landscape & trends
-                    </div>
-                  </motion.button>
+                  {suggestionCards.map((card) => {
+                    const cardClass =
+                      card.variant === "highlight"
+                        ? HIGHLIGHT_SUGGESTION_CARD_CLASS
+                        : DEFAULT_SUGGESTION_CARD_CLASS;
+                    const titleClass =
+                      card.variant === "highlight"
+                        ? "text-blue-700 dark:text-blue-300 mb-1.5 sm:mb-2 text-xs sm:text-sm font-medium group-hover:text-blue-900 dark:group-hover:text-blue-100"
+                        : "text-gray-700 dark:text-gray-300 mb-1.5 sm:mb-2 text-xs sm:text-sm font-medium group-hover:text-gray-900 dark:group-hover:text-gray-100";
+                    const subtitleClass =
+                      card.variant === "highlight"
+                        ? "text-[10px] sm:text-xs text-blue-600 dark:text-blue-400"
+                        : "text-[10px] sm:text-xs text-gray-500 dark:text-gray-400";
+                    const focusClass =
+                      card.variant === "highlight"
+                        ? "text-[10px] sm:text-xs text-blue-500 dark:text-blue-300"
+                        : "text-[10px] sm:text-xs text-gray-500 dark:text-gray-400";
 
-                  <motion.button
-                    onClick={() =>
-                      handlePromptClick(
-                        "Find patents by Tesla in autonomous driving technology. Analyze the key innovations, compare different approaches to sensor fusion and decision-making systems, and identify the most recent filings."
-                      )
-                    }
-                    className="bg-gray-50 dark:bg-gray-800/50 p-2.5 sm:p-4 rounded-xl border border-gray-100 dark:border-gray-700 hover:border-gray-200 dark:hover:border-gray-600 transition-colors hover:bg-gray-100 dark:hover:bg-gray-800 text-left group"
-                    initial={{ opacity: 0, y: 20 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    transition={{ delay: 0.4, duration: 0.5 }}
-                    whileTap={{ scale: 0.98 }}
-                  >
-                    <div className="text-gray-700 dark:text-gray-300 mb-1.5 sm:mb-2 text-xs sm:text-sm font-medium group-hover:text-gray-900 dark:group-hover:text-gray-100">
-                      🚗 Patent Analysis
-                    </div>
-                    <div className="text-[10px] sm:text-xs text-gray-500 dark:text-gray-400">
-                      Company portfolios & innovations
-                    </div>
-                  </motion.button>
-
-                  <motion.button
-                    onClick={() =>
-                      handlePromptClick(
-                        "Analyze patent trends in CRISPR technology over the past 10 years. Create a CSV with patent numbers, filing dates, assignees, and key innovations. Generate charts showing filing trends by year, top assignees, and technology evolution."
-                      )
-                    }
-                    className="bg-gray-50 dark:bg-gray-800/50 p-2.5 sm:p-4 rounded-xl border border-gray-100 dark:border-gray-700 hover:border-gray-200 dark:hover:border-gray-600 transition-colors hover:bg-gray-100 dark:hover:bg-gray-800 text-left group"
-                    initial={{ opacity: 0, y: 20 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    transition={{ delay: 0.5, duration: 0.5 }}
-                    whileTap={{ scale: 0.98 }}
-                  >
-                    <div className="text-gray-700 dark:text-gray-300 mb-1.5 sm:mb-2 text-xs sm:text-sm font-medium group-hover:text-gray-900 dark:group-hover:text-gray-100">
-                      📈 Innovation Trends
-                    </div>
-                    <div className="text-[10px] sm:text-xs text-gray-500 dark:text-gray-400">
-                      Patent trends & technology evolution
-                    </div>
-                  </motion.button>
-
-                  <motion.button
-                    onClick={() =>
-                      handlePromptClick(
-                        "What are the top assignees for quantum computing patents? Analyze their patent portfolios, identify key innovations, and compare their approaches to quantum error correction and qubit architectures."
-                      )
-                    }
-                    className="bg-gray-50 dark:bg-gray-800/50 p-2.5 sm:p-4 rounded-xl border border-gray-100 dark:border-gray-700 hover:border-gray-200 dark:hover:border-gray-600 transition-colors hover:bg-gray-100 dark:hover:bg-gray-800 text-left group"
-                    initial={{ opacity: 0, y: 20 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    transition={{ delay: 0.6, duration: 0.5 }}
-                    whileTap={{ scale: 0.98 }}
-                  >
-                    <div className="text-gray-700 dark:text-gray-300 mb-1.5 sm:mb-2 text-xs sm:text-sm font-medium group-hover:text-gray-900 dark:group-hover:text-gray-100">
-                      🏢 Competitive Intelligence
-                    </div>
-                    <div className="text-[10px] sm:text-xs text-gray-500 dark:text-gray-400">
-                      Top assignees & portfolio analysis
-                    </div>
-                  </motion.button>
-
-                  <motion.button
-                    onClick={() =>
-                      handlePromptClick(
-                        "Compare different approaches to neural signal processing in brain implantable devices. Find patents from different companies, analyze their technical approaches, and create a comparative analysis of their innovations. Generate charts showing patent filing trends and assignee portfolios."
-                      )
-                    }
-                    className="bg-gray-50 dark:bg-gray-800/50 p-2.5 sm:p-4 rounded-xl border border-gray-100 dark:border-gray-700 hover:border-gray-200 dark:hover:border-gray-600 transition-colors hover:bg-gray-100 dark:hover:bg-gray-800 text-left group"
-                    initial={{ opacity: 0, y: 20 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    transition={{ delay: 0.7, duration: 0.5 }}
-                    whileTap={{ scale: 0.98 }}
-                  >
-                    <div className="text-gray-700 dark:text-gray-300 mb-1.5 sm:mb-2 text-xs sm:text-sm font-medium group-hover:text-gray-900 dark:group-hover:text-gray-100">
-                      🔬 Comparative Analysis
-                    </div>
-                    <div className="text-[10px] sm:text-xs text-gray-500 dark:text-gray-400">
-                      Technology approaches & comparisons
-                    </div>
-                  </motion.button>
-
-                  <motion.button
-                    onClick={() =>
-                      handlePromptClick(
-                        "Do a comprehensive patent landscape analysis of AI chip architecture. Search for patents from major tech companies, analyze different approaches to neural processing units, identify key innovations, and compare assignee portfolios. Use Python to analyze filing trends and create charts showing technology evolution, competitive positioning, and innovation gaps."
-                      )
-                    }
-                    className="bg-gradient-to-r from-blue-50 to-purple-50 dark:from-blue-900/20 dark:to-purple-900/20 p-2.5 sm:p-4 rounded-xl border border-blue-200 dark:border-blue-700 hover:border-blue-300 dark:hover:border-blue-600 transition-colors hover:from-blue-100 hover:to-purple-100 dark:hover:from-blue-900/30 dark:hover:to-purple-900/30 text-left group col-span-1 sm:col-span-2 lg:col-span-1"
-                    initial={{ opacity: 0, y: 20 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    transition={{ delay: 0.8, duration: 0.5 }}
-                    whileTap={{ scale: 0.98 }}
-                  >
-                    <div className="text-blue-700 dark:text-blue-300 mb-1.5 sm:mb-2 text-xs sm:text-sm font-medium group-hover:text-blue-900 dark:group-hover:text-blue-100">
-                      🚀 Deep Investigation
-                    </div>
-                    <div className="text-[10px] sm:text-xs text-blue-600 dark:text-blue-400">
-                      Patent landscape + Competitive analysis + Trends
-                    </div>
-                  </motion.button>
+                    return (
+                      <motion.button
+                        key={`${card.id}-${card.focus}`}
+                        onClick={() => handlePromptClick(card.prompt)}
+                        className={`${cardClass} ${card.gridClass ?? ""}`}
+                        initial={{ opacity: 0, y: 20 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        transition={{ delay: card.delay, duration: 0.5 }}
+                        whileTap={{ scale: 0.98 }}
+                      >
+                        <div className={titleClass}>
+                          {card.emoji} {card.title}
+                        </div>
+                        <div className={subtitleClass}>{card.subtitle}</div>
+                        {card.focus && (
+                          <div className={`${focusClass} mt-0.5`}>
+                            Focus: {card.focus}
+                          </div>
+                        )}
+                      </motion.button>
+                    );
+                  })}
                 </div>
 
-                <div className="mt-4 sm:mt-8">
-                  <DataSourceLogos />
-                </div>
               </div>
             </div>
           </motion.div>
@@ -2891,31 +3000,57 @@ export function ChatInterface({
               )}
 
               <form onSubmit={handleSubmit} className="max-w-3xl mx-auto">
-                <div className="relative flex items-end">
-                  <Textarea
-                    value={input}
-                    onChange={handleInputChange}
-                    placeholder="Ask a question..."
-                    className="w-full resize-none rounded-2xl px-3 sm:px-4 py-2.5 sm:py-3 pr-14 sm:pr-16 min-h-[38px] sm:min-h-[40px] max-h-28 sm:max-h-32 overflow-y-auto text-sm sm:text-base bg-white dark:bg-gray-900 border border-gray-300 dark:border-gray-700 focus:border-gray-400 dark:focus:border-gray-600 focus:ring-0 focus-visible:ring-0 focus-visible:ring-offset-0 shadow-sm"
-                    disabled={status === "error" || isLoading}
-                    rows={1}
-                    style={{ lineHeight: "1.5" }}
-                    onKeyDown={(e) => {
-                      if (e.key === "Enter" && !e.shiftKey) {
-                        e.preventDefault();
-                        handleSubmit(e);
-                      }
-                    }}
-                  />
-                  <Button
-                    type={canStop ? "button" : "submit"}
-                    onClick={canStop ? handleStop : undefined}
-                    disabled={
-                      !canStop &&
-                      (isLoading || !input.trim() || status === "error")
-                    }
-                    className="absolute right-1.5 sm:right-2 top-1/2 -translate-y-1/2 rounded-xl h-7 w-7 sm:h-8 sm:w-8 p-0 bg-gray-900 hover:bg-gray-800 dark:bg-gray-100 dark:hover:bg-gray-200 dark:text-gray-900"
+                <div className="relative flex items-end gap-2">
+                  {/* Valyu/LLM Toggle Button */}
+                  <button
+                    type="button"
+                    onClick={handleModeToggle}
+                    disabled={isLoading}
+                    className={`flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-xs font-medium transition-all whitespace-nowrap ${
+                      useValyuMode
+                        ? 'bg-gradient-to-r from-blue-500/90 to-purple-600/90 text-white shadow-md shadow-blue-500/30'
+                        : 'bg-gray-200/80 dark:bg-gray-700/80 text-gray-700 dark:text-gray-300 hover:bg-gray-300/80 dark:hover:bg-gray-600/80'
+                    } ${isLoading ? 'opacity-50 cursor-not-allowed' : 'cursor-pointer'}`}
+                    title={useValyuMode ? 'Using Valyu + LLM (patent search enabled)' : 'Using LLM Only (no patent search)'}
                   >
+                    {useValyuMode ? (
+                      <>
+                        <Search className="h-3.5 w-3.5" />
+                        <span className="hidden sm:inline">Valyu</span>
+                      </>
+                    ) : (
+                      <>
+                        <Brain className="h-3.5 w-3.5" />
+                        <span className="hidden sm:inline">LLM Only</span>
+                      </>
+                    )}
+                  </button>
+                  
+                  <div className="flex-1 relative">
+                    <Textarea
+                      value={input}
+                      onChange={handleInputChange}
+                      placeholder="Ask a question..."
+                      className="w-full resize-none rounded-2xl px-3 sm:px-4 py-2.5 sm:py-3 pr-14 sm:pr-16 min-h-[38px] sm:min-h-[40px] max-h-28 sm:max-h-32 overflow-y-auto text-sm sm:text-base bg-purple-200 dark:bg-purple-900/30 bg-clip-padding backdrop-filter backdrop-blur-xl bg-opacity-20 dark:bg-opacity-30 border border-gray-100 dark:border-purple-500/30 focus:border-purple-300 dark:focus:border-purple-400 focus:ring-2 focus:ring-purple-500/20 dark:focus:ring-purple-500/20 focus-visible:ring-0 focus-visible:ring-offset-0 shadow-lg shadow-blue-500/10 dark:shadow-purple-500/20"
+                      disabled={status === "error" || isLoading}
+                      rows={1}
+                      style={{ lineHeight: "1.5" }}
+                      onKeyDown={(e) => {
+                        if (e.key === "Enter" && !e.shiftKey) {
+                          e.preventDefault();
+                          handleSubmit(e);
+                        }
+                      }}
+                    />
+                    <Button
+                      type={canStop ? "button" : "submit"}
+                      onClick={canStop ? handleStop : undefined}
+                      disabled={
+                        !canStop &&
+                        (isLoading || !input.trim() || status === "error")
+                      }
+                      className="absolute right-1.5 sm:right-2 top-1/2 -translate-y-1/2 rounded-xl h-7 w-7 sm:h-8 sm:w-8 p-0 bg-gradient-to-br from-blue-500/90 to-purple-600/90 backdrop-blur-md hover:from-blue-600 hover:to-purple-700 dark:from-blue-500/80 dark:to-purple-600/80 dark:hover:from-blue-600/90 dark:hover:to-purple-700/90 text-white shadow-lg shadow-blue-500/20 dark:shadow-purple-500/30"
+                    >
                     {canStop ? (
                       <Square className="h-3.5 w-3.5 sm:h-4 sm:w-4" />
                     ) : isLoading ? (
@@ -2936,6 +3071,7 @@ export function ChatInterface({
                       </svg>
                     )}
                   </Button>
+                  </div>
                 </div>
               </form>
 
@@ -2991,7 +3127,7 @@ export function ChatInterface({
               {message.role === "user" ? (
                 /* User Message */
                 <div className="flex justify-end mb-4 sm:mb-6 px-3 sm:px-0">
-                  <div className="max-w-[85%] sm:max-w-[80%] bg-gray-100 dark:bg-gray-800 rounded-2xl px-4 sm:px-4 py-3 sm:py-3 relative group shadow-sm">
+                  <div className="max-w-[85%] sm:max-w-[80%] h-full w-full bg-purple-200 dark:bg-purple-900/30 rounded-2xl bg-clip-padding backdrop-filter backdrop-blur-xl bg-opacity-20 dark:bg-opacity-30 border border-gray-100 dark:border-purple-500/30 px-4 sm:px-4 py-3 sm:py-3 relative group shadow-lg shadow-blue-500/10 dark:shadow-purple-500/20">
                     {/* User Message Actions */}
                     <div className="absolute -left-8 sm:-left-10 top-2 opacity-0 group-hover:opacity-100 transition-opacity flex gap-0.5 sm:gap-1">
                       <Button
@@ -3050,7 +3186,17 @@ export function ChatInterface({
                 <div className="mb-6 sm:mb-8 group px-3 sm:px-0">
                   {editingMessageId === message.id ? null : (
                     <div className="space-y-5">
-                      {(() => {
+                      {/* LLM-only mode: Simple, clean rendering - just the text */}
+                      {!useValyuMode ? (
+                            <div className="prose prose-sm max-w-none dark:prose-invert">
+                              <ReactMarkdown
+                                remarkPlugins={[remarkGfm]}
+                              >
+                                {(message.parts?.find((p: any) => p.type === "text") as any)?.text || ""}
+                              </ReactMarkdown>
+                            </div>
+                          ) : (() => {
+                        // Valyu mode: Full rendering with tools, citations, etc.
                         // Group consecutive reasoning steps together
                         // Note: This runs on every render, but it's a simple grouping operation
                         // The real performance fix is in removing expensive operations during input-available state
@@ -3070,8 +3216,9 @@ export function ChatInterface({
                         const messageIsComplete = hasTextOutput && (!isLastMessage || !isLoading);
 
                         // Show header if there's any reasoning/tool activity (not just text)
+                        // In LLM-only mode, don't show activity header for tool calls
                         const hasActivity = groupedParts.some(g =>
-                          g.type === "reasoning-group" || g.part?.type?.startsWith("tool-")
+                          g.type === "reasoning-group" || (useValyuMode && g.part?.type?.startsWith("tool-"))
                         );
 
                         // Get the latest step info for display
@@ -3153,14 +3300,20 @@ export function ChatInterface({
                         // Filter to show only the latest step when trace is collapsed
                         // When collapsed: hide ALL reasoning/tool steps, only show text output
                         // When expanded: show all steps
-                        const displayParts = isTraceExpanded
+                        // In LLM-only mode: filter out all tool results regardless of trace state
+                        const displayParts = (isTraceExpanded
                           ? groupedParts
                           : groupedParts.filter(g => {
                               // Only show text parts when collapsed
                               if (g.type === "reasoning-group") return false;
                               if (g.part?.type?.startsWith("tool-")) return false;
                               return g.part?.type === "text";
-                            });
+                            })
+                        ).filter(g => {
+                          // In LLM-only mode, filter out all tool results
+                          if (!useValyuMode && g.part?.type?.startsWith("tool-")) return false;
+                          return true;
+                        });
 
                         return (
                           <>
@@ -3168,7 +3321,7 @@ export function ChatInterface({
                             {hasActivity && (
                               <button
                                 onClick={() => setIsTraceExpanded(!isTraceExpanded)}
-                                className="w-full flex items-start gap-4 px-4 py-4 bg-gradient-to-br from-gray-50 to-gray-100/50 dark:from-gray-800/50 dark:to-gray-900/30 rounded-xl border border-gray-200 dark:border-gray-700 hover:border-gray-300 dark:hover:border-gray-600 hover:shadow-sm transition-all mb-4 text-left group"
+                                className="w-full h-full bg-purple-200 dark:bg-purple-900/30 rounded-xl bg-clip-padding backdrop-filter backdrop-blur-xl bg-opacity-20 dark:bg-opacity-30 border border-gray-100 dark:border-purple-500/30 hover:bg-opacity-30 dark:hover:bg-opacity-40 hover:shadow-lg hover:shadow-blue-500/10 dark:hover:shadow-purple-500/20 flex items-start gap-4 px-4 py-4 transition-all mb-4 text-left group"
                               >
                                 {/* Icon */}
                                 <div className="flex-shrink-0 mt-0.5">
@@ -3304,6 +3457,7 @@ export function ChatInterface({
                                       currentPartIndex={index}
                                       allMessages={deferredMessages}
                                       currentMessageIndex={realIndex}
+                                      useValyuMode={useValyuMode}
                                     />
                                   </div>
                                 );
@@ -3427,9 +3581,9 @@ export function ChatInterface({
                                     <div className="group relative py-0.5 animate-in fade-in duration-200">
                                       <div
                                         className={`relative flex items-start gap-4 py-4 px-4 -mx-2 rounded-md transition-all duration-150 ${
-                                          isStreaming ? 'bg-blue-50/50 dark:bg-blue-950/10' : ''
+                                          isStreaming ? 'bg-blue-500/20 dark:bg-blue-500/10 backdrop-blur-sm' : ''
                                         } ${
-                                          hasResults ? 'hover:bg-gray-50 dark:hover:bg-white/[0.02] cursor-pointer' : ''
+                                          hasResults ? 'hover:bg-white/40 dark:hover:bg-gray-800/40 backdrop-blur-sm cursor-pointer' : ''
                                         }`}
                                         onClick={hasResults ? () => toggleToolExpansion(`step-search-${message.id}-${index}`) : undefined}
                                       >
@@ -3880,7 +4034,7 @@ export function ChatInterface({
 
                   {/* Message Actions - Professional Action Bar */}
                   {message.role === "assistant" && !isLoading && (
-                    <div className="flex justify-end gap-2 mt-6 pt-4 mb-8 border-t border-gray-100 dark:border-gray-800">
+                    <div className="flex justify-end gap-2 mt-6 pt-4 mb-24 sm:mb-28 border-t border-gray-100 dark:border-gray-800">
                       <button
                         onClick={() => copyToClipboard(getMessageText(message))}
                         className="inline-flex items-center gap-2 px-3 py-1.5 text-xs font-medium text-gray-500 dark:text-gray-500 hover:text-gray-700 dark:hover:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-800/50 rounded-lg transition-all"
@@ -3980,35 +4134,6 @@ export function ChatInterface({
         <div ref={bottomAnchorRef} className="h-px w-full" />
       </div>
 
-      {/* Gradient fade above input form */}
-      <AnimatePresence>
-        {(isFormAtBottom || isMobile) && (
-          <>
-            <motion.div
-              className="fixed left-1/2 -translate-x-1/2 bottom-0 w-full max-w-3xl h-36 pointer-events-none z-45"
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              exit={{ opacity: 0 }}
-              transition={{ duration: 0.3, ease: "easeOut" }}
-            >
-              <div
-                className="dark:hidden absolute inset-0"
-                style={{
-                  background:
-                    "linear-gradient(to top, rgb(245,245,245) 0%, rgba(245,245,245,0.98) 30%, rgba(245,245,245,0.8) 60%, rgba(245,245,245,0) 100%)",
-                }}
-              />
-              <div
-                className="hidden dark:block absolute inset-0"
-                style={{
-                  background:
-                    "linear-gradient(to top, rgb(3 7 18) 0%, rgb(3 7 18 / 0.98) 30%, rgb(3 7 18 / 0.8) 60%, transparent 100%)",
-                }}
-              />
-            </motion.div>
-          </>
-        )}
-      </AnimatePresence>
       
       {/* Error Display */}
       {error && (
@@ -4072,7 +4197,32 @@ export function ChatInterface({
             )}
 
             <form onSubmit={handleSubmit} className="max-w-3xl mx-auto">
-              <div className="bg-white dark:bg-gray-900 rounded-2xl shadow-sm border border-gray-200 dark:border-gray-700 px-4 py-2.5 relative flex items-center">
+              <div className="h-full w-full bg-purple-200 dark:bg-purple-900/30 rounded-2xl bg-clip-padding backdrop-filter backdrop-blur-xl bg-opacity-20 dark:bg-opacity-30 border border-gray-100 dark:border-purple-500/30 shadow-sm px-4 py-2.5 relative flex items-center gap-2">
+                {/* Valyu/LLM Toggle Button */}
+                  <button
+                    type="button"
+                    onClick={handleModeToggle}
+                  disabled={isLoading}
+                  className={`flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-xs font-medium transition-all whitespace-nowrap ${
+                    useValyuMode
+                      ? 'bg-gradient-to-r from-blue-500/90 to-purple-600/90 text-white shadow-md shadow-blue-500/30'
+                      : 'bg-gray-200/80 dark:bg-gray-700/80 text-gray-700 dark:text-gray-300 hover:bg-gray-300/80 dark:hover:bg-gray-600/80'
+                  } ${isLoading ? 'opacity-50 cursor-not-allowed' : 'cursor-pointer'}`}
+                  title={useValyuMode ? 'Using Valyu + LLM (patent search enabled)' : 'Using LLM Only (no patent search)'}
+                >
+                  {useValyuMode ? (
+                    <>
+                      <Search className="h-3.5 w-3.5" />
+                      <span className="hidden sm:inline">Valyu</span>
+                    </>
+                  ) : (
+                    <>
+                      <Brain className="h-3.5 w-3.5" />
+                      <span className="hidden sm:inline">LLM Only</span>
+                    </>
+                  )}
+                </button>
+                
                 <Textarea
                   value={input}
                   onChange={handleInputChange}
@@ -4140,6 +4290,7 @@ export function ChatInterface({
         )}
       </AnimatePresence>
 
+      {/* Developer data dialog */}
       {/* Rate Limit Banner */}
       <RateLimitBanner />
 
@@ -4199,6 +4350,7 @@ export function ChatInterface({
         error={modelCompatibilityError?.message || ''}
         modelName={selectedModel || undefined}
       />
+
     </div>
   );
 }

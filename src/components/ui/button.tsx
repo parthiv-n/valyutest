@@ -10,15 +10,15 @@ const buttonVariants = cva(
     variants: {
       variant: {
         default:
-          "bg-primary text-primary-foreground shadow-xs hover:bg-primary/90",
+          "bg-gradient-to-r from-blue-500/90 to-purple-600/90 backdrop-blur-md text-white shadow-lg shadow-blue-500/20 dark:shadow-purple-500/30 hover:from-blue-600 hover:to-purple-700 dark:from-blue-500/80 dark:to-purple-600/80 dark:hover:from-blue-600/90 dark:hover:to-purple-700/90",
         destructive:
-          "bg-destructive text-white shadow-xs hover:bg-destructive/90 focus-visible:ring-destructive/20 dark:focus-visible:ring-destructive/40 dark:bg-destructive/60",
+          "bg-destructive/90 backdrop-blur-md text-white shadow-lg shadow-red-500/20 hover:bg-destructive focus-visible:ring-destructive/20 dark:focus-visible:ring-destructive/40 dark:bg-destructive/60",
         outline:
-          "border bg-background shadow-xs hover:bg-accent hover:text-accent-foreground dark:bg-input/30 dark:border-input dark:hover:bg-input/50",
+          "border border-blue-200/50 dark:border-purple-500/30 bg-white/60 dark:bg-gray-800/60 backdrop-blur-md shadow-sm hover:bg-white/80 dark:hover:bg-gray-800/80 hover:border-blue-300/70 dark:hover:border-purple-400/50",
         secondary:
-          "bg-secondary text-secondary-foreground shadow-xs hover:bg-secondary/80",
+          "bg-white/60 dark:bg-gray-800/60 backdrop-blur-md text-secondary-foreground shadow-sm hover:bg-white/80 dark:hover:bg-gray-800/80 border border-blue-200/30 dark:border-purple-500/20",
         ghost:
-          "hover:bg-accent hover:text-accent-foreground dark:hover:bg-accent/50",
+          "hover:bg-white/40 dark:hover:bg-gray-800/40 backdrop-blur-sm hover:text-accent-foreground",
         link: "text-primary underline-offset-4 hover:underline",
       },
       size: {

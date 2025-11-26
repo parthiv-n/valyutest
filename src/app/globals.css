@@ -118,7 +118,14 @@
     @apply border-border outline-ring/50;
   }
   body {
-    @apply bg-background text-foreground transition-colors duration-300;
+    @apply text-foreground transition-colors duration-300;
+    background: linear-gradient(135deg, #e0f2fe 0%, #f3e8ff 25%, #fce7f3 50%, #e0e7ff 75%, #dbeafe 100%);
+    background-attachment: fixed;
+    min-height: 100vh;
+  }
+  body.dark {
+    background: linear-gradient(135deg, #0f172a 0%, #1e1b4b 25%, #581c87 50%, #312e81 75%, #1e3a8a 100%);
+    background-attachment: fixed;
   }
   html {
     @apply transition-colors duration-300;

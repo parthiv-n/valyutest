@@ -17,9 +17,10 @@ export const maxDuration = 800;
 
 export async function POST(req: Request) {
   try {
-    const { messages, sessionId }: { messages: BiomedUIMessage[], sessionId?: string } = await req.json();
+    const { messages, sessionId, useValyuMode = true }: { messages: BiomedUIMessage[], sessionId?: string, useValyuMode?: boolean } = await req.json();
     console.log("[Chat API] ========== NEW REQUEST ==========");
     console.log("[Chat API] Received sessionId:", sessionId);
+    console.log("[Chat API] Use Valyu Mode:", useValyuMode);
     console.log("[Chat API] Number of messages:", messages.length);
     // console.log(
     //   "[Chat API] Incoming messages:",
@@ -390,19 +391,77 @@ export async function POST(req: Request) {
       }
     }
 
-    const result = streamText({
-      model: selectedModel as any,
-      messages: convertToModelMessages(messages),
-      tools: healthcareTools,
-      toolChoice: "auto",
-      experimental_context: {
-        userId: user?.id,
-        userTier,
-        sessionId,
-      },
-      providerOptions,
-      // DON'T pass abortSignal - we want the stream to continue even if user switches tabs
-      system: `You are a helpful patent research and innovation trends assistant with access to comprehensive tools for Python code execution, USPTO patent data, patent analysis, web search, and data visualization.
+    // Filter tools based on Valyu mode
+    let availableTools: any;
+    
+    if (!useValyuMode) {
+      // LLM-only mode: No tools at all - just a direct LLM wrapper
+      availableTools = undefined;
+      console.log("[Chat API] LLM-only mode: No tools - direct LLM wrapper");
+    } else {
+      // Valyu mode: All tools available
+      availableTools = healthcareTools;
+      console.log("[Chat API] Valyu + LLM mode: All tools available");
+    }
+
+    // Filter messages for LLM-only mode - remove all tool-related content from history
+    // This ensures the LLM doesn't see structured outputs from previous Valyu mode interactions
+    let processedMessages = messages;
+    
+    if (!useValyuMode) {
+      processedMessages = messages.map(msg => {
+        // For user messages, keep as is
+        if (msg.role === 'user') {
+          // Extract just the text content, remove any tool-related parts
+          const textContent = (msg.parts?.find((p: any) => p.type === 'text') as any)?.text || '';
+          return {
+            ...msg,
+            role: msg.role,
+            parts: [{ type: 'text' as const, text: textContent }]
+          };
+        }
+        
+        // For assistant messages, only keep text parts - remove tool calls and results
+        if (msg.role === 'assistant') {
+          const textParts = msg.parts?.filter((p: any) => p.type === 'text') || [];
+          const textContent = textParts.map((p: any) => p.text).join('\n').trim();
+          
+          // If there's no text content, skip this message entirely
+          if (!textContent) {
+            return null;
+          }
+          
+          // Clean the text content - remove chart/CSV references and structured formatting
+          const cleanedContent = textContent
+            .replace(/!\[([^\]]*)\]\((\/api\/charts\/[^\/]+\/image|csv:[a-f0-9-]+|\/api\/csvs\/[a-f0-9-]+)\)/gi, '')
+            .replace(/## References[\s\S]*$/i, '') // Remove references section
+            .replace(/\[\d+\]/g, '') // Remove citation markers
+            .trim();
+          
+          return {
+            ...msg,
+            role: msg.role,
+            parts: [{ type: 'text' as const, text: cleanedContent }]
+          };
+        }
+        
+        return msg;
+      }).filter(Boolean) as BiomedUIMessage[]; // Remove null messages
+      
+      console.log("[Chat API] LLM-only mode: Filtered messages from", messages.length, "to", processedMessages.length);
+    }
+
+    // Base system prompt - completely different for LLM-only mode
+    let systemPrompt: string;
+    
+    if (!useValyuMode) {
+      // LLM-only mode: Minimal prompt - let the LLM be itself
+      // No formatting instructions, no structure requirements, just be helpful
+      systemPrompt = `You are a helpful assistant. Answer the user's question directly and naturally. Do not use any special formatting unless it helps clarity. Just be helpful and conversational.`;
+    } else {
+      // Valyu mode: Full patent research assistant with tools
+      systemPrompt = `You are a helpful patent research and innovation trends assistant with access to comprehensive tools for Python code execution, USPTO patent data, patent analysis, web search, and data visualization.
+
 
       CRITICAL CITATION INSTRUCTIONS:
       When you use ANY search tool (patent search, patent analysis, or web search) and reference information from the results in your response:
@@ -412,6 +471,17 @@ export async function POST(req: Request) {
       3. **Multiple Citations**: When multiple sources support the same statement, group them together: [1][2][3] or [1,2,3]
       4. **Sequential Numbering**: Number citations sequentially starting from [1] based on the order sources appear in your search results
       5. **Consistent References**: The same source always gets the same number throughout your response
+      6. **MANDATORY BIBLIOGRAPHY**: You MUST ALWAYS include a "References" or "Sources" section at the END of your response listing all cited sources. This section must appear after your main content and before any closing remarks. Format it as:
+      
+      ## References
+      [1] [Full source information - patent number, title, assignee, filing date, etc. OR web source URL and title]
+      [2] [Full source information]
+      [3] [Full source information]
+      
+      For patents, include: Patent number, Title, Assignee, Filing date (if available)
+      For web sources, include: Title or description, URL (if available)
+      
+      **CRITICAL**: If you use citations [1], [2], [3] in your response, you MUST include a References section. Never use citations without providing the corresponding reference list. Users need to be able to look up what [1], [2], etc. actually refer to.
 
       CITATION PLACEMENT RULES (CRITICAL - READ CAREFULLY):
       - ✅ CORRECT: Place citations ONLY at the END of sentences before the period: "Tesla's revenue grew 50% in Q3 2023 [1]."
@@ -421,13 +491,21 @@ export async function POST(req: Request) {
       - ✅ CORRECT: Group multiple citations together: "Multiple studies confirm significant efficacy [1][2][3]."
       - For bullet points in lists, place citations at the end of each bullet point if needed
 
-      Example of PROPER citation usage:
-      "Tesla filed 45 patents related to solid-state battery technology between 2018-2024 [1]. US11234567 describes a novel ceramic electrolyte composition that improves energy density by 40% compared to conventional designs [1][2]. The patent was filed in March 2021 and has received 45 citations to date [1]. These innovations demonstrate Tesla's strong position in next-generation battery technology [1][2][3]."
+      Example of PROPER citation usage WITH REFERENCES:
+      "Tesla filed 45 patents related to solid-state battery technology between 2018-2024 [1]. US11234567 describes a novel ceramic electrolyte composition that improves energy density by 40% compared to conventional designs [1][2]. The patent was filed in March 2021 and has received 45 citations to date [1]. These innovations demonstrate Tesla's strong position in next-generation battery technology [1][2][3].
+      
+      ## References
+      [1] US Patent US11234567, \"Solid-State Battery Electrolyte Composition\", Assignee: Tesla Inc., Filed: March 15, 2021
+      [2] US Patent US11234568, \"Ceramic Electrolyte Manufacturing Process\", Assignee: Tesla Inc., Filed: April 2, 2021
+      [3] Web Source: \"Tesla Battery Technology Innovation Trends\", https://example.com/tesla-battery-trends"
 
       Example of WRONG citation usage (DO NOT DO THIS):
       "[1] Tesla filed 45 patents [1]. [2] US11234567 describes a novel electrolyte [2]."
+      [Missing References section - users cannot look up what [1] and [2] refer to]
       
       CRITICAL: NEVER HALLUCINATE PATENT NUMBERS. Only use real patent numbers from search results. If you don't have a patent number from search results, don't invent one.
+      
+      **MANDATORY FOR ALL RESPONSES**: If you use ANY citations [1], [2], [3] etc. anywhere in your response, you MUST include a "References" or "Sources" section at the END of your response. This applies to ALL types of responses - findings reports, simple answers, analyses, etc. Never use citations without providing the corresponding reference list.
 
       ---
       PATENT DATA ANALYSIS AND FINDINGS REPORT GUIDELINES:
@@ -524,6 +602,14 @@ export async function POST(req: Request) {
       - Mention that conclusions are limited to the data provided and may not cover all existing patents
       - Note any search limitations or biases
 
+      ## 7. References
+      [MANDATORY: List all cited sources here. Format each reference with its citation number matching what was used in the text.]
+      [1] [Patent number, Title, Assignee, Filing date - OR - Web source title and URL]
+      [2] [Patent number, Title, Assignee, Filing date - OR - Web source title and URL]
+      [3] [Continue listing all sources...]
+      
+      **CRITICAL**: If you used ANY citations [1], [2], [3] etc. in your response, you MUST include this References section. Never omit it.
+
       SYNTHESIS REQUIREMENTS (CRITICAL):
       - NEVER just list patents with their metadata - always provide analysis and insights
       - Group similar patents together and explain the common theme or approach
@@ -542,6 +628,9 @@ export async function POST(req: Request) {
       - ALWAYS provide comparative analysis - how do different approaches compare?
       - ALWAYS include strategic insights - what does this mean? What are the implications?
       - ALWAYS end with Key Takeaways - summarize the most important insights
+      - **MANDATORY**: ALWAYS include a "References" or "Sources" section at the END if you used ANY citations [1], [2], etc. in your response
+      - The References section must list all sources with their citation numbers matching what was used in the text
+      - Format references clearly: For patents include patent number, title, assignee, filing date. For web sources include title and URL.
       - If you have very little data, say so explicitly in the "Limitations" section and keep the report short
       - When users ask for "examples" (plural), provide MULTIPLE diverse examples (minimum 5-10, ideally 10-15)
       - For example requests, use maxResults=15-20 in your patent search tool calls to get comprehensive coverage
@@ -556,7 +645,7 @@ export async function POST(req: Request) {
       "# Findings Report: Brain Implantable Devices
       
       ## Executive Summary
-      The patent landscape for brain implantable devices shows a focus on enhancing neural signal acquisition and adaptive stimulation algorithms. Two key patents from 2021-2023 demonstrate complementary approaches: one targeting system integration and override capabilities, the other focusing on signal processing improvements. The assignees represent academic medical institutions, suggesting this remains an active research area rather than purely commercial development. The patents indicate a trend toward more sophisticated, algorithm-driven neural interfaces that can adapt to individual patient needs.
+      The patent landscape for brain implantable devices shows a focus on enhancing neural signal acquisition and adaptive stimulation algorithms. Two key patents from 2021-2023 demonstrate complementary approaches: one targeting system integration and override capabilities, the other focusing on signal processing improvements [1][2]. The assignees represent academic medical institutions, suggesting this remains an active research area rather than purely commercial development [1]. The patents indicate a trend toward more sophisticated, algorithm-driven neural interfaces that can adapt to individual patient needs [1][2].
       
       ## 1. Scope and methodology
       - Based on 2 unique patents returned from the search
@@ -567,13 +656,17 @@ export async function POST(req: Request) {
       
       - **Theme:** Enhanced Neural Signal Acquisition Systems
         - Representative patents: [extract patent numbers from data]
-        - Key innovation: Devices capable of overriding existing deep brain stimulation systems to enable enhanced signal acquisition and algorithm testing
+        - Key innovation: Devices capable of overriding existing deep brain stimulation systems to enable enhanced signal acquisition and algorithm testing [1]
         - Notable assignees: [extract from data - likely academic/medical institutions]
-        - Strategic significance: This approach addresses a critical limitation in current DBS systems - the inability to easily test new algorithms without replacing hardware. This suggests a move toward more flexible, software-upgradeable neural interfaces.
-        - Technical differentiation: Unlike fixed-function implants, these systems allow dynamic reconfiguration and algorithm testing, representing a shift toward adaptive neural interfaces.
+        - Strategic significance: This approach addresses a critical limitation in current DBS systems - the inability to easily test new algorithms without replacing hardware. This suggests a move toward more flexible, software-upgradeable neural interfaces [1].
+        - Technical differentiation: Unlike fixed-function implants, these systems allow dynamic reconfiguration and algorithm testing, representing a shift toward adaptive neural interfaces [2].
       
-      [Continue with comparative analysis, strategic insights, key takeaways, and limitations sections...]"
+      [Continue with comparative analysis, strategic insights, key takeaways, and limitations sections...]
       
+      ## 7. References
+      [1] US Patent [patent number], \"[Patent Title]\", Assignee: [Assignee name], Filed: [Filing date]
+      [2] US Patent [patent number], \"[Patent Title]\", Assignee: [Assignee name], Filed: [Filing date]"
+
       ---
       
       You can:
@@ -615,12 +708,41 @@ export async function POST(req: Request) {
       • Related patents and similar technologies
       • Competitive intelligence and landscape analysis
       
-               For web searches, you can find information on:
-         • Current events and news from any topic
-         • Research topics with high relevance scoring
-         • Educational content and explanations
-         • Technology trends and developments
-         • General knowledge across all domains
+      For web searches, you can find information on:
+      • Current events and news from any topic
+      • Research topics with high relevance scoring
+      • Educational content and explanations
+      • Technology trends and developments
+      • General knowledge across all domains`;
+    }
+    
+    systemPrompt += `
+
+      **MOST CRITICAL RULE**: NEVER HALLUCINATE OR INVENT PATENT NUMBERS. Only use real patent numbers that come from search results. LLMs frequently hallucinate patent numbers - you must ONLY use actual patent numbers returned by the patent search tool. If you don't have a patent number from search results, don't make one up.
+
+      For patent searches, you can access:
+      • Real USPTO patent data via Valyu API
+      • Patent numbers, titles, abstracts, and claims
+      • Filing dates, issue dates, and priority dates
+      • Inventors and assignees (companies/individuals)
+      • Patent citations and references
+      • Technology classifications and categories
+      • Patent families and related applications
+
+      For patent analysis, you can access:
+      • Detailed patent information and full text
+      • Citation networks and forward/backward citations
+      • Patent families and continuation applications
+      • Legal status and maintenance fees
+      • Related patents and similar technologies
+      • Competitive intelligence and landscape analysis
+      
+      For web searches, you can find information on:
+      • Current events and news from any topic
+      • Research topics with high relevance scoring
+      • Educational content and explanations
+      • Technology trends and developments
+      • General knowledge across all domains
          
          For data visualization, you can create charts when users want to:
          • Compare patent portfolios across companies or technologies (line/bar charts)
@@ -713,123 +835,34 @@ export async function POST(req: Request) {
                   When explaining mathematical concepts, formulas, or pharmacokinetic calculations, ALWAYS use LaTeX notation for clear mathematical expressions:
 
          CRITICAL: ALWAYS wrap ALL mathematical expressions in <math>...</math> tags:
-         - For inline math: <math>Growth Rate = \frac{P_{2024} - P_{2015}}{P_{2015}} \times 100\%</math>
-         - For fractions: <math>\frac{Citations}{Patents} = Average Citation Rate</math>
-         - For exponents: <math>P(t) = P_0 \times (1 + r)^t</math>
-         - For complex formulas: <math>Innovation Index = \frac{Patents \times Citations}{Years Active}</math>
+         - For inline math: <math>Growth Rate = (Final Value - Initial Value) / Initial Value</math>
+         - For display math (centered, larger): <math display="block">E = mc^2</math>
+         - Use proper LaTeX syntax: <math>\\sum_{i=1}^{n} x_i</math> for summation
+         - Use \\frac{a}{b} for fractions: <math>\\frac{Revenue}{Cost}</math>
+         - Use subscripts and superscripts: <math>H_2O</math>, <math>x^2</math>
+         - Use Greek letters: <math>\\alpha, \\beta, \\gamma, \\delta</math>
+         - Use special symbols: <math>\\leq, \\geq, \\neq, \\approx</math>
+         - Always escape backslashes in strings: Use \\\\ for a single backslash in LaTeX
+         - For complex formulas, use display mode: <math display="block">Complex Formula Here</math>
+         
+         Examples:
+         - Inline: "The growth rate is <math>\\frac{Final - Initial}{Initial} \\times 100%</math>"
+         - Display: <math display="block">\\sum_{i=1}^{n} \\frac{x_i - \\bar{x}}{n-1}</math>
+         
+         Always use LaTeX for mathematical expressions to ensure proper rendering.`;
 
-         NEVER write LaTeX code directly in text like \frac{Patents}{Years} or \times - it must be inside <math> tags.
-         NEVER use $ or $$ delimiters - only use <math>...</math> tags.
-         This makes patent trend and statistical formulas much more readable and professional.
-         Choose the patent search tool specifically for USPTO patent data, technology searches, inventor searches, assignee searches, and patent number lookups.
-         Choose the patent analysis tool for detailed patent information, citation analysis, patent families, and competitive intelligence.
-         Choose the web search tool for patent news, litigation information, market context, technology trends, and general information.
-         Choose the chart creation tool when users want to visualize patent data, compare companies or technologies, or see innovation trends over time.
-
-         When users ask for charts or data visualization, or when you have patent time series data:
-         1. First gather the necessary data (using patent search or patent analysis if needed)
-         2. Then create an appropriate chart with that data (always visualize time series data like patent filing trends, technology evolution)
-         3. Ensure the chart has a clear title, proper axis labels, and meaningful data series names
-         4. Colors are automatically assigned for optimal visual distinction
-
-      Important: If you use the chart creation tool to plot a chart, do NOT add a link to the chart in your response. The chart will be rendered automatically for the user. Simply explain the chart and its insights, but do not include any hyperlinks or references to a chart link.
-
-      When making multiple tool calls in parallel to retrieve time series data (for example, comparing several companies or technologies), always specify the same time periods for each tool call. This ensures the resulting data is directly comparable and can be visualized accurately on the same chart. If the user does not specify a time range, choose a reasonable default (such as patents from the past 10 years) and use it consistently across all tool calls for time series data.
-
-      Provide clear explanations and context for all information. Offer practical advice when relevant.
-      Be encouraging and supportive while helping users find accurate, up-to-date information.
-
-      ---
-      CRITICAL AGENT BEHAVIOR:
-      - After every reasoning step, you must either call a tool or provide a final answer. Never stop after reasoning alone.
-      - If you realize you need to correct a previous tool call, immediately issue the correct tool call.
-      - If the user asks for multiple items (e.g., multiple companies), you must call the tool for each and only finish when all are processed and summarized.
-      - Always continue until you have completed all required tool calls and provided a summary or visualization if appropriate.
-      - NEVER just show Python code as text - if the user wants calculations or Python code, you MUST use the codeExecution tool to run it
-      - When users say "calculate", "compute", or mention Python code, this is a COMMAND to use the codeExecution tool, not a request to see code
-      - NEVER suggest using Python to fetch data from the internet or APIs. All data retrieval must be done via the patentSearch, patentAnalysis, or webSearch tools.
-      - NEVER invent or hallucinate patent numbers. Only use real patent numbers from search results.
-      - Remember: The Python environment runs in the cloud with NumPy, pandas, and scikit-learn available, but NO visualization libraries.
-      
-      CRITICAL WORKFLOW ORDER:
-      1. First: Complete ALL data gathering (searches, calculations, etc.)
-      2. Then: Create ALL charts/visualizations based on the gathered data
-      3. Finally: Present your final formatted response with analysis
-      
-      This ensures charts appear immediately before your analysis and are not lost among tool calls.
-      ---
-
-      ---
-      FINAL RESPONSE FORMATTING GUIDELINES:
-      When presenting your final response to the user, you MUST format the information in an extremely well-organized and visually appealing way:
-
-      1. **Use Rich Markdown Formatting:**
-         - Use tables for comparative data, clinical outcomes, and any structured information
-         - Use bullet points and numbered lists appropriately
-         - Use **bold** for key metrics and important values (response rates, survival data, p-values)
-         - Use headers (##, ###) to organize sections clearly
-         - Use blockquotes (>) for key insights or summaries
-
-      2. **Tables for Patent Data:**
-         - Present patent information, assignee portfolios, technology comparisons, and trend data in markdown tables
-         - Format numbers with proper separators and units (e.g., 45 patents, 32.5 avg citations)
-         - Include patent numbers, filing dates, inventors, and assignees
-         - Example:
-         | Patent Number | Title | Assignee | Filing Date | Citations |
-         |---------------|-------|----------|-------------|-----------|
-         | US11234567 | Solid-state battery with ceramic electrolyte | Tesla Inc. | 2021-03-15 | 45 |
-         | US11234568 | Manufacturing method for solid-state cells | Toyota Motor Corp. | 2020-11-20 | 38 |
-
-      3. **Mathematical Formulas:**
-         - Always use <math> tags for any mathematical expressions
-         - Present patent trend analysis and statistical calculations clearly with proper notation
-
-      4. **Data Organization:**
-         - Group related information together
-         - Use clear section headers
-         - Provide executive summaries at the beginning
-         - Include key takeaways at the end
-
-      5. **Chart Placement:**
-         - Create ALL charts IMMEDIATELY BEFORE your final response text
-         - First complete all data gathering and analysis tool calls
-         - Then create all necessary charts
-         - Finally present your comprehensive analysis with references to the charts
-         - This ensures charts are visible and not buried among tool calls
-
-      6. **Visual Hierarchy:**
-         - Start with a brief executive summary
-         - Present detailed findings in organized sections
-         - Use horizontal rules (---) to separate major sections
-         - End with key takeaways and visual charts
-
-      7. **Code Display Guidelines:**
-         - DO NOT repeat Python code in your final response if you've already executed it with the codeExecution tool
-         - The executed code and its output are already displayed in the tool result box
-         - Only show code snippets in your final response if:
-           a) You're explaining a concept that wasn't executed
-           b) The user specifically asks to see the code again
-           c) You're showing an alternative approach
-         - Reference the executed results instead of repeating the code
-
-      Remember: The goal is to present ALL retrieved data and facts in the most professional, readable, and visually appealing format possible. Think of it as creating a professional patent landscape report or innovation analysis presentation.
-
-      8. **Citation Requirements:**
-         - ALWAYS cite sources when using information from search results
-         - Place citations [1], [2], etc. ONLY at the END of sentences - NEVER at the beginning or middle
-         - Do NOT place the same citation number multiple times in one sentence
-         - Group multiple citations together when they support the same point: [1][2][3]
-         - Maintain consistent numbering throughout your response
-         - Each unique search result gets ONE citation number used consistently
-         - Citations are MANDATORY for:
-           • Patent numbers (ALWAYS cite the source - never invent patent numbers)
-           • Specific numbers, statistics, percentages (patent counts, filing dates, citation counts)
-           • Patent filing trends and technology evolution data
-           • Quotes or paraphrased statements from patents or search results
-           • Assignee information, inventor names, filing dates
-           • Any factual claims from search results
-      ---
-      `,
+    const result = streamText({
+      model: selectedModel as any,
+      messages: convertToModelMessages(processedMessages),
+      ...(availableTools && { tools: availableTools, toolChoice: "auto" }),
+      experimental_context: {
+        userId: user?.id,
+        userTier,
+        sessionId,
+      },
+      providerOptions,
+      // DON'T pass abortSignal - we want the stream to continue even if user switches tabs
+      system: systemPrompt,
     });
 
     // Log streamText result object type
@@ -847,11 +880,7 @@ export async function POST(req: Request) {
         console.log('[Chat API] Processing completed in', processingTimeMs, 'ms');
 
         // Save all messages to database
-        console.log('[Chat API] onFinish called - user:', !!user, 'sessionId:', sessionId);
-        console.log('[Chat API] Total messages in conversation:', allMessages.length);
-        console.log('[Chat API] Will save messages:', !!(user && sessionId));
-
-        if (user && sessionId) {
+        if (sessionId && user) {
           console.log('[Chat API] Saving messages to session:', sessionId);
 
           // The correct pattern: Save ALL messages from the conversation
@@ -865,11 +894,7 @@ export async function POST(req: Request) {
               contentToSave = message.parts;
             } else if (message.content) {
               // Fallback for older format
-              if (typeof message.content === 'string') {
-                contentToSave = [{ type: 'text', text: message.content }];
-              } else if (Array.isArray(message.content)) {
-                contentToSave = message.content;
-              }
+              contentToSave = Array.isArray(message.content) ? message.content : [{ type: 'text', text: message.content }];
             }
 
             return {
@@ -879,11 +904,9 @@ export async function POST(req: Request) {
               role: message.role,
               content: contentToSave,
               processing_time_ms:
-                message.role === 'assistant' &&
-                index === allMessages.length - 1 &&
-                processingTimeMs !== undefined
-                  ? processingTimeMs
-                  : undefined,
+                (message as any).processing_time_ms || (message as any).processingTimeMs || null,
+              toolCalls: (message as any).toolCalls || [],
+              createdAt: (message as any).createdAt || new Date().toISOString(),
             };
           });
 
@@ -903,12 +926,7 @@ export async function POST(req: Request) {
               console.log('[Chat API] Updated session timestamp for:', sessionId);
             }
           }
-        } else {
-          console.log('[Chat API] Skipping message save - user:', !!user, 'sessionId:', sessionId);
         }
-
-        // No manual usage tracking needed - Polar LLM Strategy handles this automatically!
-        console.log('[Chat API] AI usage automatically tracked by Polar LLM Strategy');
       }
     });
 

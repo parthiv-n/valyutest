@@ -2,7 +2,7 @@
 
 import { ChatInterface } from '@/components/chat-interface';
 import { RateLimitDialog } from '@/components/rate-limit-dialog';
-import { useState, useEffect, useCallback, Suspense } from 'react';
+import { useState, useEffect, useCallback, Suspense, useTransition } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import BottomBar from '@/components/bottom-bar';
 import Image from 'next/image';
@@ -28,12 +28,14 @@ function HomeContent() {
   const { allowed, remaining, resetTime, increment } = useRateLimit();
   const router = useRouter();
   const searchParams = useSearchParams();
+  const [, startTransition] = useTransition();
   const [hasMessages, setHasMessages] = useState(false);
   const [isHoveringTitle, setIsHoveringTitle] = useState(false);
   const [autoTiltTriggered, setAutoTiltTriggered] = useState(false);
   const [isMobile, setIsMobile] = useState(false);
   const [showRateLimitDialog, setShowRateLimitDialog] = useState(false);
   const [rateLimitResetTime, setRateLimitResetTime] = useState(new Date());
+  const [useValyuMode, setUseValyuMode] = useState(true);
   
   // Get chatId from URL params
   const chatIdParam = searchParams.get('chatId');
@@ -207,16 +209,23 @@ function HomeContent() {
   }, [hasMessages, autoTiltTriggered]);
 
   const updateUrlWithSession = useCallback((sessionId: string | null) => {
-    const url = new URL(window.location.href);
-    if (sessionId) {
-      url.searchParams.set('chatId', sessionId);
-    } else {
-      url.searchParams.delete('chatId');
-      url.searchParams.delete('q'); // Also clear query parameter for clean new chat
-    }
-    // Use replace to avoid creating browser history entries
-    window.history.replaceState(null, '', url.toString());
-  }, []);
+    startTransition(() => {
+      const url = new URL(window.location.href);
+      if (sessionId) {
+        url.searchParams.set('chatId', sessionId);
+      } else {
+        url.searchParams.delete('chatId');
+        url.searchParams.delete('q'); // Also clear query parameter for clean new chat
+      }
+      router.replace(url.pathname + url.search, { scroll: false });
+    });
+  }, [router, startTransition]);
+
+  const resetChatState = useCallback(() => {
+    setChatKey(prev => prev + 1);
+    setCurrentSessionId(undefined);
+    updateUrlWithSession(null);
+  }, [updateUrlWithSession]);
 
   const handleSessionSelect = useCallback((sessionId: string) => {
     setCurrentSessionId(sessionId);
@@ -224,15 +233,18 @@ function HomeContent() {
   }, [updateUrlWithSession]);
 
   const handleNewChat = useCallback(() => {
-    // Increment key to force ChatInterface remount
-    setChatKey(prev => prev + 1);
+    resetChatState();
+  }, [resetChatState]);
 
-    // Clear the local state
-    setCurrentSessionId(undefined);
-
-    // Update URL (which will trigger useEffect to sync state)
-    updateUrlWithSession(null);
-  }, [updateUrlWithSession]);
+  const handleModeChange = useCallback((mode: boolean) => {
+    setUseValyuMode((prev) => {
+      if (prev === mode) {
+        return prev;
+      }
+      resetChatState();
+      return mode;
+    });
+  }, [resetChatState]);
 
   const handleSessionCreated = useCallback((sessionId: string) => {
     setCurrentSessionId(sessionId);
@@ -242,14 +254,17 @@ function HomeContent() {
 
   if (loading) {
     return (
-      <div className="flex items-center justify-center min-h-screen bg-[#F5F5F5] dark:bg-gray-950">
-        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-gray-900"></div>
+      <div className="flex items-center justify-center min-h-screen">
+        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-gray-900 dark:border-gray-100"></div>
       </div>
     );
   }
 
   return (
-    <div className='min-h-screen bg-[#F5F5F5] dark:bg-gray-950 flex'>
+    <div className='min-h-screen flex relative'>
+      {/* Gradient background overlay */}
+      <div className="fixed inset-0 bg-gradient-to-br from-blue-100/40 via-purple-100/30 to-pink-100/40 dark:from-blue-950/40 dark:via-purple-950/30 dark:to-pink-950/40 pointer-events-none z-0" />
+      <div className="relative z-10 flex flex-1 w-full">
       {/* Enterprise Banner */}
       <EnterpriseBanner />
 
@@ -284,6 +299,8 @@ function HomeContent() {
         onSessionSelect={handleSessionSelect}
         onNewChat={handleNewChat}
         hasMessages={hasMessages}
+        useValyuMode={useValyuMode}
+        onModeChange={handleModeChange}
       />
 
       {/* Main Content Area */}
@@ -378,7 +395,7 @@ function HomeContent() {
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ delay: 0.2, duration: 0.6, ease: "easeOut" }}
               >
-                Powered by Valyu&apos;s patent data infrastructure for real patent search and innovation analysis
+                Powered by Valyu&apos;s US patent data infrastructure for real patent search and innovation analysis
               </motion.p>
             </motion.div>
           )}
@@ -405,6 +422,8 @@ function HomeContent() {
                 resetTime,
                 increment
               }}
+              useValyuMode={useValyuMode}
+              onModeChange={handleModeChange}
             />
           </Suspense>
         </motion.div>
@@ -439,6 +458,7 @@ function HomeContent() {
           messageCount={messageCount}
         />
       )}
+      </div>
     </div>
   );
 }
@@ -446,7 +466,7 @@ function HomeContent() {
 export default function Home() {
   return (
     <Suspense fallback={
-      <div className="flex items-center justify-center min-h-screen bg-[#F5F5F5] dark:bg-gray-950">
+      <div className="flex items-center justify-center min-h-screen">
         <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-gray-900 dark:border-gray-100"></div>
       </div>
     }>

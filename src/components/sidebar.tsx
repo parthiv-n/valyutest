@@ -33,6 +33,8 @@ interface SidebarProps {
   onSessionSelect?: (sessionId: string) => void;
   onNewChat?: () => void;
   hasMessages?: boolean;
+  useValyuMode?: boolean;
+  onModeChange?: (mode: boolean) => void;
 }
 
 interface ChatSession {
@@ -48,6 +50,8 @@ export function Sidebar({
   onSessionSelect,
   onNewChat,
   hasMessages = false,
+  useValyuMode = true,
+  onModeChange,
 }: SidebarProps) {
   const { user } = useAuthStore();
   const signOut = useAuthStore((state) => state.signOut);
@@ -56,9 +60,13 @@ export function Sidebar({
   const queryClient = useQueryClient();
   const isDevelopment = process.env.NEXT_PUBLIC_APP_MODE === 'development';
 
-  // Keep dock open by default for everyone
+  // Sidebar is always open
   const [isOpen, setIsOpen] = useState(true);
-  const [alwaysOpen, setAlwaysOpen] = useState(true);
+  const handleModeTabClick = useCallback((mode: boolean) => {
+    if (!onModeChange) return;
+    if (mode === useValyuMode) return;
+    onModeChange(mode);
+  }, [onModeChange, useValyuMode]);
   const [showHistory, setShowHistory] = useState(false);
   const [showSettings, setShowSettings] = useState(false);
   const [showSubscription, setShowSubscription] = useState(false);
@@ -113,20 +121,7 @@ export function Sidebar({
     setShowHistory(false);
   }, [onNewChat]);
 
-  const toggleSidebar = () => {
-    if (alwaysOpen) return; // Don't allow closing if always open is enabled
-    setIsOpen(!isOpen);
-    if (isOpen) {
-      setShowHistory(false); // Close history when closing sidebar
-    }
-  };
-
-  // Keep sidebar open if alwaysOpen is enabled
-  useEffect(() => {
-    if (alwaysOpen) {
-      setIsOpen(true);
-    }
-  }, [alwaysOpen]);
+  // Sidebar is always open, no toggle needed
 
   // Listen for upgrade modal trigger from rate limit banner
   useEffect(() => {
@@ -145,21 +140,14 @@ export function Sidebar({
       );
 
       if (confirmed) {
-        // Only close sidebar if not in alwaysOpen mode
-        if (!alwaysOpen) {
-          setIsOpen(false);
-        }
         setShowHistory(false);
         onNewChat?.(); // Call onNewChat to properly reset the chat interface
       }
       return;
     }
 
-    // If on homepage without active chat, collapse sidebar only if not in alwaysOpen mode
+    // If on homepage without active chat
     if (pathname === '/') {
-      if (!alwaysOpen) {
-        setIsOpen(false);
-      }
       setShowHistory(false);
       return;
     }
@@ -170,10 +158,6 @@ export function Sidebar({
     );
 
     if (confirmed) {
-      // Only close sidebar if not in alwaysOpen mode
-      if (!alwaysOpen) {
-        setIsOpen(false);
-      }
       setShowHistory(false);
       router.push('/');
     }
@@ -204,30 +188,6 @@ export function Sidebar({
 
   return (
     <>
-      {/* Chevron Toggle Button - Left Edge, Centered */}
-      {!isOpen && (
-        <motion.button
-          initial={{ opacity: 0, x: -20 }}
-          animate={{ opacity: 1, x: 0 }}
-          onClick={toggleSidebar}
-          className="fixed left-0 top-1/2 -translate-y-1/2 z-50 w-10 h-16 flex items-center justify-center bg-white dark:bg-gray-900 border-r-2 border-t-2 border-b-2 border-gray-200 dark:border-gray-700 hover:border-gray-300 dark:hover:border-gray-600 rounded-r-2xl transition-all duration-200 shadow-lg hover:shadow-xl hover:w-12 group"
-          title="Open Menu"
-        >
-          <svg
-            className="w-5 h-5 text-gray-600 dark:text-gray-400 group-hover:text-gray-900 dark:group-hover:text-gray-100 transition-colors"
-            fill="none"
-            stroke="currentColor"
-            viewBox="0 0 24 24"
-          >
-            <path
-              strokeLinecap="round"
-              strokeLinejoin="round"
-              strokeWidth={2.5}
-              d="M9 5l7 7-7 7"
-            />
-          </svg>
-        </motion.button>
-      )}
 
       {/* macOS Dock-Style Navigation - Left Side */}
       <AnimatePresence>
@@ -241,221 +201,251 @@ export function Sidebar({
               damping: 30,
               stiffness: 300
             }}
-            className="fixed left-6 top-1/2 -translate-y-1/2 z-40 bg-white/80 dark:bg-gray-900/80 backdrop-blur-2xl border border-gray-200 dark:border-gray-700 rounded-[32px] shadow-2xl py-4 px-3"
+            className="fixed left-6 top-6 z-40 h-auto w-[170px] bg-purple-200 dark:bg-purple-900/30 rounded-[32px] bg-clip-padding backdrop-filter backdrop-blur-xl bg-opacity-20 dark:bg-opacity-30 border border-gray-100 dark:border-purple-500/30 shadow-2xl shadow-blue-500/10 dark:shadow-purple-500/20 py-4 px-4"
           >
-            <div className="flex flex-col items-center gap-2">
-              {/* Always Open Toggle */}
-              <div className="relative group/tooltip">
-                <button
-                  onClick={() => setAlwaysOpen(!alwaysOpen)}
-                  className={`w-12 h-12 flex items-center justify-center rounded-[20px] transition-all duration-200 hover:scale-110 active:scale-95 ${
-                    alwaysOpen
-                      ? 'bg-blue-100 dark:bg-blue-900/30'
-                      : 'hover:bg-gray-100 dark:hover:bg-gray-800'
-                  }`}
-                >
-                  <svg
-                    className={`w-6 h-6 transition-colors ${
-                      alwaysOpen
-                        ? 'text-blue-600 dark:text-blue-400'
-                        : 'text-gray-600 dark:text-gray-400'
-                    }`}
-                    fill="none"
-                    stroke="currentColor"
-                    viewBox="0 0 24 24"
-                  >
-                    <path
-                      strokeLinecap="round"
-                      strokeLinejoin="round"
-                      strokeWidth={2}
-                      d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z"
-                    />
-                  </svg>
-                </button>
-                <div className="absolute left-full ml-3 top-1/2 -translate-y-1/2 px-3 py-1.5 bg-gray-900 dark:bg-gray-100 text-white dark:text-gray-900 text-sm font-medium rounded-lg opacity-0 group-hover/tooltip:opacity-100 pointer-events-none transition-opacity whitespace-nowrap z-50">
-                  {alwaysOpen ? 'Always Open (On)' : 'Always Open (Off)'}
-                </div>
-              </div>
-
-              {/* Divider */}
-              <div className="w-10 h-px bg-gradient-to-r from-transparent via-gray-300 dark:via-gray-600 to-transparent" />
+            <div className="flex flex-col gap-2">
 
               {/* Logo */}
-              <div className="relative group/tooltip">
-                <button
-                  onClick={handleLogoClick}
-                  className="w-12 h-12 flex items-center justify-center hover:bg-gray-100 dark:hover:bg-gray-800 rounded-[20px] transition-all duration-200 hover:scale-110 active:scale-95"
-                >
-                  <Image
-                    src="/nabla.png"
-                    alt="Home"
-                    width={28}
-                    height={28}
-                    className="rounded-lg"
-                  />
-                </button>
-                <div className="absolute left-full ml-3 top-1/2 -translate-y-1/2 px-3 py-1.5 bg-gray-900 dark:bg-gray-100 text-white dark:text-gray-900 text-sm font-medium rounded-lg opacity-0 group-hover/tooltip:opacity-100 pointer-events-none transition-opacity whitespace-nowrap z-50">
-                  Home
+              <button
+                onClick={handleLogoClick}
+                className="w-full flex items-center gap-3 px-3 py-2.5 hover:bg-white/40 dark:hover:bg-gray-800/40 backdrop-blur-sm rounded-xl transition-all duration-200 group"
+              >
+                <Image
+                  src="/nabla.png"
+                  alt="Home"
+                  width={24}
+                  height={24}
+                  className="rounded-lg flex-shrink-0"
+                />
+                <span className="text-sm font-medium text-gray-700 dark:text-gray-300 group-hover:text-gray-900 dark:group-hover:text-gray-100">Home</span>
+              </button>
+
+              {/* Mode Tabs */}
+              <div className="mt-2">
+                <div className="text-[11px] font-semibold uppercase tracking-[0.25em] text-gray-500 dark:text-gray-400 mb-2">
+                  Mode
+                </div>
+                <div className="grid grid-cols-2 gap-2">
+                  {[
+                    { label: 'Valyu + LLM', value: true },
+                    { label: 'LLM Only', value: false },
+                  ].map((tab) => {
+                    const isActive = useValyuMode === tab.value;
+                    return (
+                      <button
+                        key={tab.label}
+                        onClick={() => handleModeTabClick(tab.value)}
+                        className={`w-full px-3 py-2 rounded-xl border border-white/60 dark:border-gray-800/60 text-[11px] font-semibold text-gray-700 dark:text-gray-300 transition-all bg-white/30 dark:bg-gray-900/30 backdrop-blur-md shadow-sm ${
+                          isActive
+                            ? 'ring-2 ring-offset-2 ring-blue-400/60 dark:ring-purple-400/60 ring-offset-white dark:ring-offset-gray-900 text-gray-900 dark:text-white'
+                            : 'hover:bg-white/50 dark:hover:bg-gray-800/50'
+                        }`}
+                      >
+                        {tab.label}
+                      </button>
+                    );
+                  })}
                 </div>
               </div>
 
               {/* Divider */}
-              <div className="w-10 h-px bg-gradient-to-r from-transparent via-gray-300 dark:via-gray-600 to-transparent" />
+              <div className="w-full h-px bg-gradient-to-r from-transparent via-gray-300 dark:via-gray-600 to-transparent my-1" />
 
               {/* New Chat */}
               {user && (
-                <div className="relative group/tooltip">
-                  <button
-                    onClick={handleNewChat}
-                    className="w-12 h-12 flex items-center justify-center hover:bg-gray-100 dark:hover:bg-gray-800 rounded-[20px] transition-all duration-200 group hover:scale-110 active:scale-95"
-                  >
-                    <MessageCirclePlus className="h-6 w-6 text-gray-600 dark:text-gray-400 group-hover:text-gray-900 dark:group-hover:text-gray-100 transition-colors" />
-                  </button>
-                  <div className="absolute left-full ml-3 top-1/2 -translate-y-1/2 px-3 py-1.5 bg-gray-900 dark:bg-gray-100 text-white dark:text-gray-900 text-sm font-medium rounded-lg opacity-0 group-hover/tooltip:opacity-100 pointer-events-none transition-opacity whitespace-nowrap z-50">
-                    New Chat
-                  </div>
-                </div>
+                <button
+                  onClick={handleNewChat}
+                  className="w-full flex items-center gap-3 px-3 py-2.5 hover:bg-white/40 dark:hover:bg-gray-800/40 backdrop-blur-sm rounded-xl transition-all duration-200 group"
+                >
+                  <MessageCirclePlus className="h-5 w-5 text-gray-600 dark:text-gray-400 group-hover:text-gray-900 dark:group-hover:text-gray-100 transition-colors flex-shrink-0" />
+                  <span className="text-sm font-medium text-gray-700 dark:text-gray-300 group-hover:text-gray-900 dark:group-hover:text-gray-100">New Chat</span>
+                </button>
               )}
 
-                      {/* History */}
-              <div className="relative group/tooltip">
+              {/* History with Hover Dropdown */}
+              <div className="relative group">
                 <button
                   onClick={() => {
                     if (!user) {
                       window.dispatchEvent(new CustomEvent('show-auth-modal'));
-                    } else {
-                      setShowHistory(!showHistory);
                     }
                   }}
-                  className={`w-12 h-12 flex items-center justify-center rounded-[20px] transition-all duration-200 hover:scale-110 active:scale-95 ${
+                  className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-xl transition-all duration-200 ${
                     !user
-                      ? 'opacity-50 cursor-not-allowed hover:bg-gray-100 dark:hover:bg-gray-800'
-                      : showHistory
-                        ? 'bg-gray-900 dark:bg-gray-100 shadow-lg'
-                        : 'hover:bg-gray-100 dark:hover:bg-gray-800'
+                      ? 'opacity-50 cursor-not-allowed hover:bg-white/40 dark:hover:bg-gray-800/40 backdrop-blur-sm'
+                      : 'hover:bg-white/40 dark:hover:bg-gray-800/40 backdrop-blur-sm'
                   }`}
                 >
-                  <MessagesSquare className={`h-6 w-6 transition-colors ${
+                  <MessagesSquare className={`h-5 w-5 transition-colors flex-shrink-0 ${
                     !user
                       ? 'text-gray-400 dark:text-gray-600'
-                      : showHistory
-                        ? 'text-white dark:text-gray-900'
-                        : 'text-gray-600 dark:text-gray-400'
+                      : 'text-gray-600 dark:text-gray-400'
                   }`} />
+                  <span className={`text-sm font-medium ${
+                    !user
+                      ? 'text-gray-400 dark:text-gray-600'
+                      : 'text-gray-700 dark:text-gray-300'
+                  }`}>
+                    {!user ? 'History (Sign up)' : 'History'}
+                  </span>
                 </button>
-                <div className="absolute left-full ml-3 top-1/2 -translate-y-1/2 px-3 py-1.5 bg-gray-900 dark:bg-gray-100 text-white dark:text-gray-900 text-sm font-medium rounded-lg opacity-0 group-hover/tooltip:opacity-100 pointer-events-none transition-opacity whitespace-nowrap z-50">
-                  {!user ? 'Sign up (free) for history' : 'History'}
-                </div>
+                
+                {/* Hover Dropdown */}
+                {user && (
+                  <div className="absolute left-full ml-2 top-0 w-64 h-auto max-h-[500px] bg-purple-200 dark:bg-purple-900/30 bg-clip-padding backdrop-filter backdrop-blur-xl bg-opacity-20 dark:bg-opacity-30 rounded-xl border border-gray-100 dark:border-purple-500/30 shadow-2xl shadow-blue-500/10 dark:shadow-purple-500/20 opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all duration-200 z-50 overflow-hidden flex flex-col">
+                    {/* Header */}
+                    <div className="p-4 border-b border-blue-200/30 dark:border-purple-500/20">
+                      <div className="flex items-center justify-between">
+                        <h3 className="font-semibold text-gray-900 dark:text-gray-100 text-sm">Chat History</h3>
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          onClick={handleNewChat}
+                          className="h-6 w-6 p-0"
+                        >
+                          <Plus className="h-3 w-3" />
+                        </Button>
+                      </div>
+                    </div>
+
+                    {/* Sessions List */}
+                    <ScrollArea className="flex-1 px-2 max-h-[400px]">
+                      {loadingSessions ? (
+                        <div className="space-y-2 p-2">
+                          {[...Array(5)].map((_, i) => (
+                            <div
+                              key={i}
+                              className="h-16 bg-white/40 dark:bg-gray-800/40 backdrop-blur-sm rounded-xl animate-pulse"
+                            />
+                          ))}
+                        </div>
+                      ) : sessions.length === 0 ? (
+                        <div className="flex items-center justify-center h-full p-4">
+                          <p className="text-sm text-gray-500 dark:text-gray-400 text-center">
+                            No chat history yet
+                          </p>
+                        </div>
+                      ) : (
+                        <div className="space-y-1 py-2">
+                          {sessions.map((session: ChatSession) => (
+                            <div
+                              key={session.id}
+                              onClick={() => handleSessionSelect(session.id)}
+                              className={`flex items-center gap-3 p-3 rounded-xl hover:bg-white/40 dark:hover:bg-gray-800/40 backdrop-blur-sm group cursor-pointer transition-colors border border-transparent hover:border-blue-200/30 dark:hover:border-purple-500/20 ${
+                                currentSessionId === session.id ? 'bg-gradient-to-r from-blue-500/20 to-purple-500/20 dark:from-blue-500/15 dark:to-purple-500/15 backdrop-blur-md border-blue-300/50 dark:border-purple-400/50' : ''
+                              }`}
+                            >
+                              <MessageSquare className="h-4 w-4 text-gray-400 dark:text-gray-500 flex-shrink-0" />
+                              <div className="flex-1 min-w-0">
+                                <div className="text-sm font-medium text-gray-900 dark:text-gray-100 truncate">
+                                  {session.title}
+                                </div>
+                                <div className="text-xs text-gray-400 dark:text-gray-500 mt-0.5 truncate">
+                                  {new Date(session.last_message_at || session.created_at).toLocaleDateString()}
+                                </div>
+                              </div>
+                              <button
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  deleteMutation.mutate(session.id);
+                                }}
+                                className="opacity-0 group-hover:opacity-100 p-1.5 rounded-lg hover:bg-red-50 dark:hover:bg-red-900/20 transition-all"
+                                title="Delete chat"
+                              >
+                                <Trash2 className="h-3.5 w-3.5 text-gray-400 dark:text-gray-500 hover:text-red-500 dark:hover:text-red-400" />
+                              </button>
+                            </div>
+                          ))}
+                        </div>
+                      )}
+                    </ScrollArea>
+                  </div>
+                )}
               </div>
 
               {/* Divider */}
-              {user && !isDevelopment && <div className="w-10 h-px bg-gradient-to-r from-transparent via-gray-300 dark:via-gray-600 to-transparent my-1" />}
+              {user && !isDevelopment && <div className="w-full h-px bg-gradient-to-r from-transparent via-gray-300 dark:via-gray-600 to-transparent my-1" />}
 
               {/* Billing/Subscription - Hidden in development mode */}
               {user && !isDevelopment && (
                 <>
                   {!isPaid ? (
-                    <div className="relative group/tooltip">
-                      <button
-                        onClick={() => setShowSubscription(true)}
-                        className="w-12 h-12 flex items-center justify-center hover:bg-gray-100 dark:hover:bg-gray-800 rounded-[20px] transition-all duration-200 group hover:scale-110 active:scale-95"
-                      >
-                        <CreditCard className="h-6 w-6 text-gray-600 dark:text-gray-400 group-hover:text-gray-900 dark:group-hover:text-gray-100 transition-colors" />
-                      </button>
-                      <div className="absolute left-full ml-3 top-1/2 -translate-y-1/2 px-3 py-1.5 bg-gray-900 dark:bg-gray-100 text-white dark:text-gray-900 text-sm font-medium rounded-lg opacity-0 group-hover/tooltip:opacity-100 pointer-events-none transition-opacity whitespace-nowrap z-50">
-                        Upgrade
-                      </div>
-                    </div>
+                    <button
+                      onClick={() => setShowSubscription(true)}
+                      className="w-full flex items-center gap-3 px-3 py-2.5 hover:bg-white/40 dark:hover:bg-gray-800/40 backdrop-blur-sm rounded-xl transition-all duration-200 group"
+                    >
+                      <CreditCard className="h-5 w-5 text-gray-600 dark:text-gray-400 group-hover:text-gray-900 dark:group-hover:text-gray-100 transition-colors flex-shrink-0" />
+                      <span className="text-sm font-medium text-gray-700 dark:text-gray-300 group-hover:text-gray-900 dark:group-hover:text-gray-100">Upgrade</span>
+                    </button>
                   ) : (
-                    <div className="relative group/tooltip">
-                      <button
-                        onClick={handleViewUsage}
-                        className="w-12 h-12 flex items-center justify-center hover:bg-gray-100 dark:hover:bg-gray-800 rounded-[20px] transition-all duration-200 group hover:scale-110 active:scale-95"
-                      >
-                        <BarChart3 className="h-6 w-6 text-gray-600 dark:text-gray-400 group-hover:text-gray-900 dark:group-hover:text-gray-100 transition-colors" />
-                      </button>
-                      <div className="absolute left-full ml-3 top-1/2 -translate-y-1/2 px-3 py-1.5 bg-gray-900 dark:bg-gray-100 text-white dark:text-gray-900 text-sm font-medium rounded-lg opacity-0 group-hover/tooltip:opacity-100 pointer-events-none transition-opacity whitespace-nowrap z-50">
-                        Usage & Billing
-                      </div>
-                    </div>
+                    <button
+                      onClick={handleViewUsage}
+                      className="w-full flex items-center gap-3 px-3 py-2.5 hover:bg-white/40 dark:hover:bg-gray-800/40 backdrop-blur-sm rounded-xl transition-all duration-200 group"
+                    >
+                      <BarChart3 className="h-5 w-5 text-gray-600 dark:text-gray-400 group-hover:text-gray-900 dark:group-hover:text-gray-100 transition-colors flex-shrink-0" />
+                      <span className="text-sm font-medium text-gray-700 dark:text-gray-300 group-hover:text-gray-900 dark:group-hover:text-gray-100">Usage & Billing</span>
+                    </button>
                   )}
                 </>
               )}
 
               {/* Enterprise */}
               {user && process.env.NEXT_PUBLIC_APP_MODE !== 'development' && process.env.NEXT_PUBLIC_ENTERPRISE === 'true' && (
-                <div className="relative group/tooltip">
-                  <button
-                    onClick={() => setShowEnterpriseModal(true)}
-                    className="w-12 h-12 flex items-center justify-center hover:bg-gray-100 dark:hover:bg-gray-800 rounded-[20px] transition-all duration-200 group hover:scale-110 active:scale-95"
-                  >
-                    <Building2 className="h-6 w-6 text-gray-600 dark:text-gray-400 group-hover:text-gray-900 dark:group-hover:text-gray-100 transition-colors" />
-                  </button>
-                  <div className="absolute left-full ml-3 top-1/2 -translate-y-1/2 px-3 py-1.5 bg-gray-900 dark:bg-gray-100 text-white dark:text-gray-900 text-sm font-medium rounded-lg opacity-0 group-hover/tooltip:opacity-100 pointer-events-none transition-opacity whitespace-nowrap z-50">
-                    Enterprise Solutions
-                  </div>
-                </div>
+                <button
+                  onClick={() => setShowEnterpriseModal(true)}
+                  className="w-full flex items-center gap-3 px-3 py-2.5 hover:bg-white/40 dark:hover:bg-gray-800/40 backdrop-blur-sm rounded-xl transition-all duration-200 group"
+                >
+                  <Building2 className="h-5 w-5 text-gray-600 dark:text-gray-400 group-hover:text-gray-900 dark:group-hover:text-gray-100 transition-colors flex-shrink-0" />
+                  <span className="text-sm font-medium text-gray-700 dark:text-gray-300 group-hover:text-gray-900 dark:group-hover:text-gray-100">Enterprise</span>
+                </button>
               )}
 
               {/* Settings */}
               {user && (
-                <div className="relative group/tooltip">
-                  <button
-                    onClick={() => setShowSettings(true)}
-                    className="w-12 h-12 flex items-center justify-center hover:bg-gray-100 dark:hover:bg-gray-800 rounded-[20px] transition-all duration-200 group hover:scale-110 active:scale-95"
-                  >
-                    <Settings className="h-6 w-6 text-gray-600 dark:text-gray-400 group-hover:text-gray-900 dark:group-hover:text-gray-100 transition-colors" />
-                  </button>
-                  <div className="absolute left-full ml-3 top-1/2 -translate-y-1/2 px-3 py-1.5 bg-gray-900 dark:bg-gray-100 text-white dark:text-gray-900 text-sm font-medium rounded-lg opacity-0 group-hover/tooltip:opacity-100 pointer-events-none transition-opacity whitespace-nowrap z-50">
-                    Settings
-                  </div>
-                </div>
+                <button
+                  onClick={() => setShowSettings(true)}
+                  className="w-full flex items-center gap-3 px-3 py-2.5 hover:bg-white/40 dark:hover:bg-gray-800/40 backdrop-blur-sm rounded-xl transition-all duration-200 group"
+                >
+                  <Settings className="h-5 w-5 text-gray-600 dark:text-gray-400 group-hover:text-gray-900 dark:group-hover:text-gray-100 transition-colors flex-shrink-0" />
+                  <span className="text-sm font-medium text-gray-700 dark:text-gray-300 group-hover:text-gray-900 dark:group-hover:text-gray-100">Settings</span>
+                </button>
               )}
 
               {/* Divider */}
-              <div className="w-10 h-px bg-gradient-to-r from-transparent via-gray-300 dark:via-gray-600 to-transparent mt-1" />
+              <div className="w-full h-px bg-gradient-to-r from-transparent via-gray-300 dark:via-gray-600 to-transparent my-1" />
 
               {/* Log In Button for unauthenticated users */}
               {!user && (
-                <div className="relative group/tooltip">
-                  <button
-                    onClick={() => {
-                      window.dispatchEvent(new CustomEvent('show-auth-modal'));
-                    }}
-                    className="w-12 h-12 flex items-center justify-center bg-gradient-to-br from-blue-50 to-emerald-50 dark:from-blue-900/30 dark:to-emerald-900/30 hover:from-blue-100 hover:to-emerald-100 dark:hover:from-blue-900/40 dark:hover:to-emerald-900/40 rounded-[20px] transition-all duration-200 hover:scale-110 active:scale-95 border border-blue-200/50 dark:border-blue-800/50 relative"
-                  >
-                    <LogOut className="h-6 w-6 text-blue-600 dark:text-blue-400 rotate-180" />
-                    <span className="absolute -top-1 -right-1 flex h-3 w-3">
-                      <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-blue-400 opacity-75"></span>
-                      <span className="relative inline-flex rounded-full h-3 w-3 bg-blue-500"></span>
-                    </span>
-                  </button>
-                  <div className="absolute left-full ml-3 top-1/2 -translate-y-1/2 px-3 py-1.5 bg-gray-900 dark:bg-gray-100 text-white dark:text-gray-900 text-sm font-medium rounded-lg opacity-0 group-hover/tooltip:opacity-100 pointer-events-none transition-opacity whitespace-nowrap z-50">
-                    Log in
-                  </div>
-                </div>
+                <button
+                  onClick={() => {
+                    window.dispatchEvent(new CustomEvent('show-auth-modal'));
+                  }}
+                  className="w-full flex items-center gap-3 px-3 py-2.5 bg-gradient-to-r from-blue-500/30 to-purple-500/30 dark:from-blue-500/20 dark:to-purple-500/20 hover:from-blue-500/40 hover:to-purple-500/40 dark:hover:from-blue-500/30 dark:hover:to-purple-500/30 rounded-xl transition-all duration-200 border border-blue-300/50 dark:border-purple-400/50 relative group"
+                >
+                  <LogOut className="h-5 w-5 text-blue-600 dark:text-blue-400 rotate-180 flex-shrink-0" />
+                  <span className="text-sm font-medium text-blue-700 dark:text-blue-300">Log in</span>
+                  <span className="absolute -top-1 -right-1 flex h-3 w-3">
+                    <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-blue-400 opacity-75"></span>
+                    <span className="relative inline-flex rounded-full h-3 w-3 bg-blue-500"></span>
+                  </span>
+                </button>
               )}
 
               {/* User Avatar with Dropdown */}
               {user && (
-                <div className="relative group/tooltip">
+                <div className="relative">
                   <button
                     onClick={() => setShowProfileMenu(!showProfileMenu)}
-                    className="w-12 h-12 flex items-center justify-center hover:bg-gray-100 dark:hover:bg-gray-800 rounded-[20px] transition-all duration-200 hover:scale-110 active:scale-95"
+                    className="w-full flex items-center gap-3 px-3 py-2.5 hover:bg-white/40 dark:hover:bg-gray-800/40 backdrop-blur-sm rounded-xl transition-all duration-200 group"
                   >
-                    <Avatar className="h-9 w-9 ring-2 ring-transparent hover:ring-gray-300 dark:hover:ring-gray-600 transition-all">
+                    <Avatar className="h-8 w-8 ring-2 ring-transparent hover:ring-gray-300 dark:hover:ring-gray-600 transition-all flex-shrink-0">
                       <AvatarImage src={user.user_metadata?.avatar_url} />
                       <AvatarFallback className="text-xs bg-gradient-to-br from-gray-900 to-gray-700 dark:from-gray-100 dark:to-gray-300 text-white dark:text-gray-900 font-semibold">
                         {user.email?.[0]?.toUpperCase() || 'U'}
                       </AvatarFallback>
                     </Avatar>
+                    <span className="text-sm font-medium text-gray-700 dark:text-gray-300 group-hover:text-gray-900 dark:group-hover:text-gray-100">Account</span>
                   </button>
-                  {/* Only show tooltip when menu is NOT open */}
-                  {!showProfileMenu && (
-                    <div className="absolute left-full ml-3 top-1/2 -translate-y-1/2 px-3 py-1.5 bg-gray-900 dark:bg-gray-100 text-white dark:text-gray-900 text-sm font-medium rounded-lg opacity-0 group-hover/tooltip:opacity-100 pointer-events-none transition-opacity whitespace-nowrap z-50">
-                      Account
-                    </div>
-                  )}
 
                   {/* Profile Dropdown */}
                   <AnimatePresence>
@@ -471,7 +461,7 @@ export function Sidebar({
                           animate={{ opacity: 1, x: 0, scale: 1 }}
                           exit={{ opacity: 0, x: -10, scale: 0.95 }}
                           transition={{ duration: 0.15 }}
-                          className="absolute left-full ml-4 bottom-0 bg-white/95 dark:bg-gray-900/95 backdrop-blur-xl border border-gray-200 dark:border-gray-700 rounded-2xl shadow-2xl py-2 px-1 min-w-[220px] z-50"
+                          className="absolute left-full ml-4 bottom-0 bg-white/90 dark:bg-gray-900/90 backdrop-blur-xl border border-blue-200/50 dark:border-purple-500/30 rounded-2xl shadow-2xl shadow-blue-500/20 dark:shadow-purple-500/30 py-2 px-1 min-w-[220px] z-50"
                         >
                         {/* User Email */}
                         <div className="px-3 py-2.5 mb-1">
@@ -482,7 +472,7 @@ export function Sidebar({
                         </div>
 
                         {/* Divider */}
-                        <div className="h-px bg-gray-200 dark:bg-gray-700 my-1" />
+                        <div className="h-px bg-gradient-to-r from-transparent via-blue-200/30 dark:via-purple-500/20 to-transparent my-1" />
 
                         {/* Sign Out */}
                         <button
@@ -505,135 +495,11 @@ export function Sidebar({
                 </div>
               )}
 
-              {/* Close Dock Button - Only show if not always open */}
-              {!alwaysOpen && (
-                <>
-                  <div className="w-10 h-px bg-gradient-to-r from-transparent via-gray-300 dark:via-gray-600 to-transparent mt-2" />
-                  <div className="relative group/tooltip">
-                    <button
-                      onClick={toggleSidebar}
-                      className="w-12 h-12 flex items-center justify-center hover:bg-gray-100 dark:hover:bg-gray-800 rounded-[20px] transition-all duration-200 hover:scale-110 active:scale-95 mt-2"
-                    >
-                      <svg
-                        className="w-5 h-5 text-gray-600 dark:text-gray-400"
-                        fill="none"
-                        stroke="currentColor"
-                        viewBox="0 0 24 24"
-                      >
-                        <path
-                          strokeLinecap="round"
-                          strokeLinejoin="round"
-                          strokeWidth={2}
-                          d="M6 18L18 6M6 6l12 12"
-                        />
-                      </svg>
-                    </button>
-                    <div className="absolute left-full ml-3 top-1/2 -translate-y-1/2 px-3 py-1.5 bg-gray-900 dark:bg-gray-100 text-white dark:text-gray-900 text-sm font-medium rounded-lg opacity-0 group-hover/tooltip:opacity-100 pointer-events-none transition-opacity whitespace-nowrap z-50">
-                      Close
-                    </div>
-                  </div>
-                </>
-              )}
             </div>
           </motion.div>
         )}
       </AnimatePresence>
 
-      {/* History Panel */}
-      <AnimatePresence>
-        {showHistory && user && (
-          <>
-            {/* Backdrop */}
-            <motion.div
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              exit={{ opacity: 0 }}
-              className="fixed inset-0 bg-black/20 z-40 backdrop-blur-sm"
-              onClick={() => setShowHistory(false)}
-            />
-
-            {/* Panel */}
-            <motion.div
-              initial={{ x: -280 }}
-              animate={{ x: 0 }}
-              exit={{ x: -280 }}
-              transition={{
-                type: 'spring',
-                damping: 30,
-                stiffness: 300
-              }}
-              className="fixed left-20 top-4 bottom-4 w-64 bg-white dark:bg-gray-900 rounded-3xl z-50 shadow-xl ml-2 flex flex-col border border-gray-200 dark:border-gray-800"
-            >
-              {/* Header */}
-              <div className="p-4 border-b border-gray-200 dark:border-gray-800">
-                <div className="flex items-center justify-between">
-                  <h3 className="font-semibold text-gray-900 dark:text-gray-100">Chat History</h3>
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    onClick={handleNewChat}
-                    className="h-8 w-8 p-0"
-                  >
-                    <Plus className="h-4 w-4" />
-                  </Button>
-                </div>
-              </div>
-
-              {/* Sessions List */}
-              <ScrollArea className="flex-1 px-2">
-                {loadingSessions ? (
-                  <div className="space-y-2 p-2">
-                    {[...Array(5)].map((_, i) => (
-                      <div
-                        key={i}
-                        className="h-16 bg-gray-100 dark:bg-gray-800 rounded-xl animate-pulse"
-                      />
-                    ))}
-                  </div>
-                ) : sessions.length === 0 ? (
-                  <div className="flex items-center justify-center h-full p-4">
-                    <p className="text-sm text-gray-500 dark:text-gray-400 text-center">
-                      No chat history yet
-                    </p>
-                  </div>
-                ) : (
-                  <div className="space-y-1 py-2">
-                    {sessions.map((session: ChatSession) => (
-                      <div
-                        key={session.id}
-                        onClick={() => handleSessionSelect(session.id)}
-                        className={`flex items-center gap-3 p-3 rounded-xl hover:bg-gray-50 dark:hover:bg-gray-800 group cursor-pointer transition-colors ${
-                          currentSessionId === session.id ? 'bg-gray-100 dark:bg-gray-800' : ''
-                        }`}
-                      >
-                        <MessageSquare className="h-4 w-4 text-gray-400 dark:text-gray-500 flex-shrink-0" />
-                        <div className="flex-1 min-w-0">
-                          <div className="text-sm font-medium text-gray-900 dark:text-gray-100 truncate">
-                            {session.title}
-                          </div>
-                          <div className="text-xs text-gray-400 dark:text-gray-500 mt-0.5 truncate">
-                            {new Date(session.last_message_at || session.created_at).toLocaleDateString()}
-                          </div>
-                        </div>
-                        <button
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            deleteMutation.mutate(session.id);
-                          }}
-                          className="opacity-0 group-hover:opacity-100 p-1.5 rounded-lg hover:bg-red-50 dark:hover:bg-red-900/20 transition-all"
-                          title="Delete chat"
-                        >
-                          <Trash2 className="h-3.5 w-3.5 text-gray-400 dark:text-gray-500 hover:text-red-500 dark:hover:text-red-400" />
-                        </button>
-                      </div>
-                    ))}
-                  </div>
-                )}
-              </ScrollArea>
-            </motion.div>
-          </>
-        )}
-      </AnimatePresence>
 
       {/* Modals */}
       <SettingsModal
