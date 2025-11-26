@@ -2,9 +2,7 @@
 
 > **AI-powered patent search and innovation trends assistant** - Search USPTO patents, analyze innovation trends, and explore technology landscapes through natural language. Powered by Valyu's patent data API with real patent numbers (no hallucinations).
 
-🚀 **[Try the live demo](https://patent-explorer.valyu.ai)** (or fork and deploy your own)
-
-![Patent Explorer](public/valyu.png)
+Fork this repo and use it yourself!
 
 ## Why Patent Explorer?
 
