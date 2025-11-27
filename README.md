@@ -1,94 +1,99 @@
-# Patent Explorer
+# Patent Explorer – Valyu RAG Chatbot Demo
 
-> **AI-powered patent search and innovation trends assistant** - Search USPTO patents, analyze innovation trends, and explore technology landscapes through natural language. Powered by Valyu's patent data API with real patent numbers (no hallucinations).
+A small, focused demo of a **domain-specific RAG chatbot** that searches **real USPTO patents** and generates analytical summaries.
 
-Fork this repo and use it yourself!
+- 🔎 Natural-language patent search  
+- 🧠 Retrieval-augmented generation using **Valyu Search API**  
+- 💬 Chat UX powered by **Vercel AI SDK**  
+- 📊 Simple trend visualizations & PDF-style landscape reports  
+- 🧱 Built to be **forked and adapted** to other domains
 
-## Why Patent Explorer?
+---
 
-LLMs hallucinate patent numbers all the time - retrieval fixes this critical issue. Patent Explorer provides:
+## Why Patents?
 
-- **🔍 Real Patent Data** - Access to USPTO patents via Valyu API with actual patent numbers, titles, abstracts, filing dates, inventors, and assignees
-- **🚫 No Hallucinations** - Only uses real patent numbers from search results, never invents them
-- **📊 Innovation Trends** - Analyze patent filing trends, technology evolution, and competitive landscapes
-- **🐍 Advanced Analytics** - Execute Python code in secure Daytona sandboxes for patent data analysis and trend calculations
-- **📈 Interactive Visualizations** - Beautiful charts and dashboards for patent trends, technology landscapes, and innovation matrices
-- **🌐 Market Context** - Web search integration for patent news, litigation, and technology trends
-- **🏠 Local AI Models** - Run with Ollama or LM Studio for unlimited, private queries using your own hardware
-- **🎯 Natural Language** - Just ask questions like "Show me key patents related to solid-state battery manufacturing"
+Patents are a great stress-test for AI search:
 
-## Key Features
+- They’re long and dense  
+- They contain subtle technical differences  
+- And LLMs **love** to hallucinate patent numbers and citations  
 
-### 🔥 Powerful Patent Tools
+By using a retrieval layer (Valyu Search) over USPTO data and constraining the model to that context, we can:
 
-- **USPTO Patent Search** - Search patents by technology, inventor, assignee, claims, or patent number
-- **Patent Analysis** - Deep dive into specific patents including citations, patent families, and related patents
-- **Analytical Reports** - Professional findings reports with executive summaries, strategic insights, and comparative analysis (not raw data dumps)
-- **Innovation Trends** - Analyze patent filing trends over time, technology evolution, and competitive intelligence
-- **Interactive Charts** - Visualize patent trends, technology landscapes, assignee portfolios, and innovation matrices
-- **Python Code Execution** - Run patent data analysis, trend calculations, and statistical computations
-- **CSV Export** - Download patent data tables for further analysis
-- **Dual Mode System** - Switch between Valyu + LLM mode (with real patent data) and LLM-only mode (for comparison)
+- Return **only real patent numbers and assignees**  
+- Let users explore with **plain-English questions**  
+- Add analytics like trends and landscape summaries on top
 
-### 🎛️ Dual Mode System
+The same pattern is reusable for other domains (clinical trials, research papers, internal docs, etc.).
 
-Patent Explorer offers two distinct modes:
+---
 
-**Valyu + LLM Mode** (Default)
-- Uses Valyu API to retrieve real USPTO patent data
-- Generates structured findings reports with citations
-- Includes strategic analysis and comparative insights
-- All tools available (patent search, analysis, charts, code execution)
+## What the App Does
 
-**LLM-Only Mode**
-- Pure LLM responses without external data retrieval
-- Minimal formatting - natural conversational responses
-- No tools - direct LLM wrapper
-- Useful for comparing responses with and without real data
+The app turns patent exploration into a conversational experience.
 
-Switch between modes using the toggle in the sidebar or prompt bar to see the difference between retrieval-augmented generation and pure LLM responses.
+You can ask things like:
 
-### 🛠️ Advanced Tool Calling
+- “Show me key patents related to solid-state battery manufacturing.”  
+- “Find patents by Tesla related to autonomous driving.”  
+- “Analyze patent trends in CRISPR technology over the past 10 years.”  
+- “What are the top assignees for quantum computing patents?”  
 
-- **Patent Search** - Search USPTO patents with real patent numbers via Valyu API
-- **Patent Analysis** - Comprehensive patent research including citations and patent families
-- **Python Code Execution** - Run complex patent data analysis, trend calculations, and statistical tests
-- **Interactive Charts** - Create publication-ready visualizations of patent trends and innovation landscapes
-- **Web Search** - Find patent news, litigation information, and market context
-- **Export & Share** - Download results, share analyses, and collaborate
+For each query, the app:
 
-## 🚀 Quick Start
+1. Uses **Valyu Search API** to retrieve relevant USPTO patents.  
+2. Displays the raw results (patent number, title, assignee, date).  
+3. Uses an LLM (via Vercel AI SDK) to generate:
+   - Executive summary of the landscape  
+   - Comparative analysis of different approaches  
+   - Basic strategic insights (key players, trends)  
+4. Optionally generates:
+   - Filing trend chart over time  
+   - Simple “landscape” visualization (e.g. 2x2 quadrants)  
 
-### Two Modes: Production vs Development
+---
 
-Patent Explorer supports two distinct operating modes:
+## Tech Stack
 
-**💻 Development Mode** (default)
-- **No Supabase required** - Uses local SQLite database
-- **No authentication needed** - Auto-login as dev user
-- **Unlimited queries** - No rate limits
-- **No billing/tracking** - Polar integration disabled
-- **Works offline** - Complete local development
-- **Ollama/LM Studio integration** - Use local LLMs for privacy and unlimited usage
+- **Backend / Retrieval**
+  - Valyu Search API (USPTO patent index)
+- **Frontend / Chat**
+  - Next.js (or React)  
+  - Vercel AI SDK for the chat experience
+- **LLM**
+  - Any model supported by Vercel AI SDK (e.g. OpenAI, etc.)
+- **Visualization (optional)**
+  - Lightweight charting library (e.g. Chart.js / Recharts)
 
-### Prerequisites
+---
 
-**For Production Mode:**
-- Node.js 18+
-- npm or yarn
-- OpenAI API key
-- Valyu API key (get one at [platform.valyu.ai](https://platform.valyu.ai))
-- Daytona API key (for code execution)
-- Supabase account and project
-- Polar account (for billing)
+## Architecture Overview
 
-**For Development Mode (Recommended for getting started):**
-- Node.js 18+
-- npm or yarn
-- Vercel AI Gateway API key (get one at [vercel.com/dashboard](https://vercel.com/dashboard) → AI Gateway → API Keys)
-- Valyu API key (get one at [platform.valyu.ai](https://platform.valyu.ai))
-- Daytona API key (for code execution)
-- [Ollama](https://ollama.com) or [LM Studio](https://lmstudio.ai) installed (optional but recommended)
+High-level flow:
+
+1. **User query** → chat input (Vercel AI SDK)  
+2. **Retriever call** → server-side request to Valyu Search API with the user’s query and filters  
+3. **Result shaping** → map Valyu results into a patent “bundle” (number, title, assignee, year, abstract/claims snippet)  
+4. **RAG prompt** → pass those bundles into an LLM as context  
+5. **LLM response** → stream back a:
+   - Natural-language summary  
+   - Optional structured JSON (e.g. list of key patents, players, trends)  
+6. **UI** → render:
+   - Chat answer  
+   - Patent list table  
+   - Trend chart / visuals (if requested)
+
+Key point for DevRel: the app **refuses to make up patent numbers**. Only IDs from the Valyu retrieval step are shown.
+
+---
+
+## Getting Started
+
+### 1. Clone the repo
+
+```bash
+git clone https://github.com/yourname/patent-explorer-valyu-demo.git
+cd patent-explorer-valyu-demo
 
 ### Installation
 
