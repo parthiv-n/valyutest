@@ -132,11 +132,11 @@ cd patent-explorer-valyu-demo
    DAYTONA_TARGET=latest  # Optional
 
    # Local LLM Configuration (Optional - for unlimited, private queries)
-   OLLAMA_BASE_URL=http://localhost:11434   # Default Ollama URL
-   LMSTUDIO_BASE_URL=http://localhost:1234  # Default LM Studio URL
+   # OLLAMA_BASE_URL=http://localhost:11434   # Default Ollama URL
+   # LMSTUDIO_BASE_URL=http://localhost:1234  # Default LM Studio URL
 
    # OpenAI Configuration (Optional - fallback if Vercel AI Gateway unavailable)
-   OPENAI_API_KEY=your-openai-api-key
+   # OPENAI_API_KEY=your-openai-api-key
    ```
 
 4. **Get your Vercel AI Gateway API Key** (Required)
